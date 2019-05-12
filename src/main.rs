@@ -19,9 +19,13 @@ use vulkano::sync;
 
 use vulkano_win::VkSurfaceBuild;
 
-use winit::{EventsLoop, Window, WindowBuilder, Event, WindowEvent};
+use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
+
+mod dir;
+use dir::Dir1;
+use dir::Dir2;
 
 fn main() {
     let instance = {
@@ -237,7 +241,28 @@ void main() {
     let mut previous_frame_end =
         Box::new(sync::now(device.clone())) as Box<GpuFuture>;
 
-    let mut char_pos = [-2.0, -2.0, 0.0];
+    let mut char_pos = [-1.5, 1.0, 0.0];
+
+    let movement_bindings = Dir2 {
+        x: Dir1 {
+            pos: winit::VirtualKeyCode::D,
+            neg: winit::VirtualKeyCode::A,
+        },
+        y: Dir1 {
+            pos: winit::VirtualKeyCode::W,
+            neg: winit::VirtualKeyCode::S,
+        },
+    };
+    let mut movement = Dir2 {
+        x: Dir1 {
+            pos: false,
+            neg: false,
+        },
+        y: Dir1 {
+            pos: false,
+            neg: false,
+        },
+    };
 
     loop {
         // cleanup unused gpu resources
@@ -367,13 +392,29 @@ void main() {
         // it.
         let mut done = false;
         events_loop.poll_events(|ev| {
+            use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCode, ElementState};
             match ev {
                 Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => done = true,
                 Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
+                Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), state, .. }), .. } => {
+                    if let VirtualKeyCode::Escape = key {
+                        done = true;
+                    }
+                    let val = state == ElementState::Pressed;
+                    movement.write_if_eq(&movement_bindings, &key, &val);
+                }
                 _ => ()
             }
         });
         if done { return; }
+
+        let mvec = movement.dir_vec();
+        let mut speed = 0.07;
+        if mvec[0] != 0.0 && mvec[1] != 0.0 {
+            speed *= 0.7;
+        }
+        char_pos[0] += speed * (mvec[0] + mvec[1]);
+        char_pos[1] += speed * (-mvec[0] + mvec[1]);
     }
 }
 
