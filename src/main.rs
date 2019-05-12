@@ -4,7 +4,7 @@ extern crate vulkano_shaders;
 extern crate winit;
 extern crate vulkano_win;
 
-use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::buffer::CpuBufferPool;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
 use vulkano::device::{Device, DeviceExtensions};
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, Subpass, RenderPassAbstract};
@@ -88,62 +88,7 @@ fn main() {
         ).unwrap()
     };
 
-    let vertex_buffer = {
-        #[derive(Debug, Clone, Copy)]
-        struct Vertex {
-            position: [f32; 3],
-            color: [f32; 3],
-        }
-        impl_vertex!(Vertex, position, color);
-
-        fn cube(x: f32, y: f32, z: f32) -> [Vertex; 18] {
-            [
-                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-                Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-
-                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-                Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-
-                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-            ]
-        }
-        let cube_pos = [
-            [0.0, 0.0, 0.0],
-            [-1.0, 0.0, 0.0],
-            [0.0, -1.0, 0.0],
-            [-2.0, 0.0, 0.0],
-            [0.0, -2.0, 0.0],
-            [-2.0, -2.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, 2.0],
-        ];
-        // @Performance ideally we would reuse between frames
-        let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
-        for &[x, y, z] in &cube_pos {
-            for &vert in &cube(x, y, z) {
-                cube_vs.push(vert);
-            }
-        }
-
-        CpuAccessibleBuffer::from_iter(
-            device.clone(),
-            BufferUsage::all(),
-            cube_vs.into_iter(),
-        ).unwrap()
-    };
+    let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
 
     mod vs {
         vulkano_shaders::shader!{
@@ -161,7 +106,7 @@ void main() {
 
     gl_Position = vec4(
         0.05 * (position.x - position.y),
-        0.05 * (- position.x - position.y - 1.4 * position.z),
+        0.05 * (- position.x - position.y - 2.0 * position.z),
         0.0,
         1.0
     );
@@ -288,6 +233,60 @@ void main() {
 
         // color to clear screen with
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
+        let vertex_buffer = {
+            #[derive(Debug, Clone, Copy)]
+            struct Vertex {
+                position: [f32; 3],
+                color: [f32; 3],
+            }
+            impl_vertex!(Vertex, position, color);
+
+            fn cube(x: f32, y: f32, z: f32) -> [Vertex; 18] {
+                [
+                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+                    Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+
+                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+                    Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+
+                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                    Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                    Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                ]
+            }
+            let cube_pos = [
+                [0.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0],
+                [-2.0, 0.0, 0.0],
+                [0.0, -2.0, 0.0],
+                [-2.0, -2.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 2.0],
+            ];
+            // @Performance ideally we would reuse between frames
+            let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
+            for &[x, y, z] in &cube_pos {
+                for &vert in &cube(x, y, z) {
+                    cube_vs.push(vert);
+                }
+            }
+
+            vertex_buffer_pool
+                .chunk(cube_vs.into_iter())
+                .unwrap()
+        };
 
         let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(
             device.clone(),
