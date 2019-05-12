@@ -35,7 +35,8 @@ fn main() {
 
 
     let mut events_loop = EventsLoop::new();
-    let surface = WindowBuilder::new().build_vk_surface(&events_loop, instance.clone()).unwrap();
+    let surface = WindowBuilder::new()
+        .build_vk_surface(&events_loop, instance.clone()).unwrap();
     let window = surface.window();
 
     let queue_family = physical.queue_families().find(|&q| {
@@ -43,21 +44,24 @@ fn main() {
         q.supports_graphics() && surface.is_supported(q).unwrap_or(false)
     }).unwrap();
 
-    let device_ext = DeviceExtensions { khr_swapchain: true, .. DeviceExtensions::none() };
-    let (device, mut queues) = Device::new(physical, physical.supported_features(), &device_ext,
-        [(queue_family, 0.5)].iter().cloned()).unwrap();
+    let device_ext = DeviceExtensions {
+        khr_swapchain: true,
+        .. DeviceExtensions::none()
+    };
+    let (device, mut queues) = Device::new(
+        physical,
+        physical.supported_features(),
+        &device_ext,
+        [(queue_family, 0.5)].iter().cloned(),
+    ).unwrap();
 
     let queue = queues.next().unwrap();
 
     let (mut swapchain, images) = {
         let caps = surface.capabilities(physical).unwrap();
-
         let usage = caps.supported_usage_flags;
-
         let alpha = caps.supported_composite_alpha.iter().next().unwrap();
-
         let format = caps.supported_formats[0].0;
-
         let initial_dimensions = if let Some(dimensions) = window.get_inner_size() {
             // convert to physical pixels
             let dimensions: (u32, u32) = dimensions.to_physical(window.get_hidpi_factor()).into();
@@ -67,22 +71,78 @@ fn main() {
             return;
         };
 
-        Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format,
-            initial_dimensions, 1, usage, &queue, SurfaceTransform::Identity, alpha,
-            PresentMode::Fifo, true, None).unwrap()
-
+        Swapchain::new(
+            device.clone(),
+            surface.clone(),
+            caps.min_image_count,
+            format,
+            initial_dimensions,
+            1,
+            usage,
+            &queue,
+            SurfaceTransform::Identity,
+            alpha,
+            PresentMode::Fifo,
+            true,
+            None
+        ).unwrap()
     };
 
     let vertex_buffer = {
-        #[derive(Debug, Clone)]
-        struct Vertex { position: [f32; 2] }
-        impl_vertex!(Vertex, position);
+        #[derive(Debug, Clone, Copy)]
+        struct Vertex {
+            position: [f32; 3],
+            color: [f32; 3],
+        }
+        impl_vertex!(Vertex, position, color);
 
-        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(), [
-            Vertex { position: [-0.5, -0.25] },
-            Vertex { position: [0.0, 0.5] },
-            Vertex { position: [0.25, -0.1] }
-        ].iter().cloned()).unwrap()
+        fn cube(x: f32, y: f32, z: f32) -> [Vertex; 18] {
+            [
+                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+                Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] },
+                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
+
+                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+                Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
+                Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
+
+                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+                Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
+            ]
+        }
+        let cube_pos = [
+            [0.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [-2.0, 0.0, 0.0],
+            [0.0, -2.0, 0.0],
+            [-2.0, -2.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 2.0],
+        ];
+        // @Performance ideally we would reuse between frames
+        let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
+        for &[x, y, z] in &cube_pos {
+            for &vert in &cube(x, y, z) {
+                cube_vs.push(vert);
+            }
+        }
+
+        CpuAccessibleBuffer::from_iter(
+            device.clone(),
+            BufferUsage::all(),
+            cube_vs.into_iter(),
+        ).unwrap()
     };
 
     mod vs {
@@ -91,10 +151,20 @@ fn main() {
             src: "
 #version 450
 
-layout(location = 0) in vec2 position;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 color;
+
+layout(location = 0) out vec3 v_color;
 
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
+    v_color = color;
+
+    gl_Position = vec4(
+        0.05 * (position.x - position.y),
+        0.05 * (- position.x - position.y - 1.4 * position.z),
+        0.0,
+        1.0
+    );
 }"
         }
     }
@@ -105,10 +175,11 @@ void main() {
             src: "
 #version 450
 
+layout(location = 0) in vec3 v_color;
 layout(location = 0) out vec4 f_color;
 
 void main() {
-    f_color = vec4(1.0, 0.0, 0.0, 1.0);
+    f_color = vec4(v_color, 1.0);
 }
 "
         }
