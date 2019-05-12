@@ -88,7 +88,55 @@ fn main() {
         ).unwrap()
     };
 
+
+    #[derive(Debug, Clone, Copy)]
+    struct Vertex {
+        position: [f32; 3],
+        color: [f32; 3],
+    }
+    impl_vertex!(Vertex, position, color);
+
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
+
+    fn cube_vertices<F: FnMut(Vertex)>(x: f32, y: f32, z: f32, mut f: F) {
+        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
+
+        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
+
+        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+    }
+
+    let mut cube_pos = [
+        [0.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [-2.0, 0.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -2.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 2.0],
+    ];
+    // this will sort primarily by z
+    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
+        PartialOrd::partial_cmp(_x2, _x1).unwrap());
+    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
+        PartialOrd::partial_cmp(_y2, _y1).unwrap());
+    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
+        PartialOrd::partial_cmp(_z1, _z2).unwrap());
 
     mod vs {
         vulkano_shaders::shader!{
@@ -106,7 +154,7 @@ void main() {
 
     gl_Position = vec4(
         0.05 * (position.x - position.y),
-        0.05 * (- position.x - position.y - 2.0 * position.z),
+        0.035 * (- position.x - position.y - 2.0 * position.z),
         0.0,
         1.0
     );
@@ -189,6 +237,8 @@ void main() {
     let mut previous_frame_end =
         Box::new(sync::now(device.clone())) as Box<GpuFuture>;
 
+    let mut char_pos = [-2.0, -2.0, 0.0];
+
     loop {
         // cleanup unused gpu resources
         previous_frame_end.cleanup_finished();
@@ -234,53 +284,20 @@ void main() {
         // color to clear screen with
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
-            #[derive(Debug, Clone, Copy)]
-            struct Vertex {
-                position: [f32; 3],
-                color: [f32; 3],
-            }
-            impl_vertex!(Vertex, position, color);
-
-            fn cube(x: f32, y: f32, z: f32) -> [Vertex; 18] {
-                [
-                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-                    Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] },
-                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] },
-
-                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-                    Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] },
-                    Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] },
-
-                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                    Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                    Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                    Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                    Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                    Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] },
-                ]
-            }
-            let cube_pos = [
-                [0.0, 0.0, 0.0],
-                [-1.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0],
-                [-2.0, 0.0, 0.0],
-                [0.0, -2.0, 0.0],
-                [-2.0, -2.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [0.0, 0.0, 2.0],
-            ];
             // @Performance ideally we would reuse between frames
             let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
+            let mut char_drawn = false;
+            let [char_x, char_y, char_z] = char_pos;
             for &[x, y, z] in &cube_pos {
-                for &vert in &cube(x, y, z) {
-                    cube_vs.push(vert);
+                // draw the character as soon as boxes start being "completely" behind it
+                if !char_drawn && z >= char_z && y <= char_y && x <= char_x {
+                    cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
+                    char_drawn = true;
                 }
+                cube_vertices(x, y, z, |v| cube_vs.push(v));
+            }
+            if !char_drawn {
+                cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
             }
 
             vertex_buffer_pool
