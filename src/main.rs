@@ -99,24 +99,52 @@ fn main() {
 
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
 
+    fn square_coords<F: FnMut(f32, f32)>(mut f: F) {
+        f(-1.0, -1.0);
+        f( 1.0, -1.0);
+        f( 1.0,  1.0);
+        f( 1.0,  1.0);
+        f(-1.0,  1.0);
+        f(-1.0, -1.0);
+    }
+
+    fn circle_vertices<F: FnMut(Vertex)>(
+        x: f32, y: f32,
+        color: [f32; 3],
+        mut f: F
+    ) {
+        square_coords(|dx, dy|
+            f(Vertex {
+                position: [x+0.5*dx, y+0.5*dy],
+                color,
+                circle: [dx, dy]
+            })
+        );
+    }
+
     fn square_vertices<F: FnMut(Vertex)>(
         x: f32, y: f32,
         color: [f32; 3],
         mut f: F
     ) {
-        f(Vertex { position: [x-0.5, y-0.5], color, circle: [-1.0, -1.0] });
-        f(Vertex { position: [x+0.5, y-0.5], color, circle: [ 1.0, -1.0] });
-        f(Vertex { position: [x+0.5, y+0.5], color, circle: [ 1.0,  1.0] });
-        f(Vertex { position: [x+0.5, y+0.5], color, circle: [ 1.0,  1.0] });
-        f(Vertex { position: [x-0.5, y+0.5], color, circle: [-1.0,  1.0] });
-        f(Vertex { position: [x-0.5, y-0.5], color, circle: [-1.0, -1.0] });
+        square_coords(|dx, dy|
+            f(Vertex {
+                position: [x+0.5*dx, y+0.5*dy],
+                color,
+                circle: [0.0, 0.0],  // all pixels will be transparent
+            })
+        );
     }
 
-    let square_pos = vec![
-        ([0.0, 0.0], [1.0, 0.0, 0.0]),
-        ([0.5, 0.2], [0.0, 0.0, 0.0]),
-        ([3.0, 1.0], [1.0, 1.0, 1.0]),
-    ];
+    fn triangle_vertices<F: FnMut(Vertex)>(
+        coords: [[f32; 2]; 3],
+        color: [f32; 3],
+        mut f: F
+    ) {
+        for &position in &coords {
+            f(Vertex { position, color, circle: [0.0, 0.0] });
+        }
+    }
 
     mod vs {
         vulkano_shaders::shader!{
@@ -264,13 +292,16 @@ void main() {
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
-            let mut cube_vs = Vec::with_capacity(18 * square_pos.len());
-            for &([x, y], color) in &square_pos {
-                square_vertices(x, y, color, |v| cube_vs.push(v));
-            }
+            let mut vs = Vec::with_capacity(6 * 2 + 3);
+            triangle_vertices(
+                [[-3.0, -2.0], [3.0, 2.0], [-1.2, 0.8]],
+                [1.0, 1.0, 1.0], |v| vs.push(v)
+            );
+            square_vertices(-2.0, 0.0, [0.0, 0.5, 0.0], |v| vs.push(v));
+            circle_vertices(1.0, 1.0, [1.0, 0.0, 0.0], |v| vs.push(v));
 
             vertex_buffer_pool
-                .chunk(cube_vs.into_iter())
+                .chunk(vs.into_iter())
                 .unwrap()
         };
 
