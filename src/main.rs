@@ -23,10 +23,6 @@ use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
 
-mod dir;
-use dir::Dir1;
-use dir::Dir2;
-
 fn main() {
     let instance = {
         let extensions = vulkano_win::required_extensions();
@@ -95,57 +91,32 @@ fn main() {
 
     #[derive(Debug, Clone, Copy)]
     struct Vertex {
-        position: [f32; 3],
+        position: [f32; 2],
         color: [f32; 3],
+        circle: [f32; 2],
     }
-    impl_vertex!(Vertex, position, color);
+    impl_vertex!(Vertex, position, color, circle);
 
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
 
-    fn cube_vertices<F: FnMut(Vertex)>(x: f32, y: f32, z: f32, mut f: F) {
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
-
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
-
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+    fn square_vertices<F: FnMut(Vertex)>(
+        x: f32, y: f32,
+        color: [f32; 3],
+        mut f: F
+    ) {
+        f(Vertex { position: [x-0.5, y-0.5], color, circle: [-1.0, -1.0] });
+        f(Vertex { position: [x+0.5, y-0.5], color, circle: [ 1.0, -1.0] });
+        f(Vertex { position: [x+0.5, y+0.5], color, circle: [ 1.0,  1.0] });
+        f(Vertex { position: [x+0.5, y+0.5], color, circle: [ 1.0,  1.0] });
+        f(Vertex { position: [x-0.5, y+0.5], color, circle: [-1.0,  1.0] });
+        f(Vertex { position: [x-0.5, y-0.5], color, circle: [-1.0, -1.0] });
     }
 
-    let mut cube_pos = vec![
-        [0.0, 0.0, 0.0],
-        [-1.0, 0.0, 0.0],
-        [-2.0, 0.0, 0.0],
-        [0.0, -1.0, 0.0],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 1.0],
-        [0.0, 0.0, 2.0],
+    let square_pos = vec![
+        ([0.0, 0.0], [1.0, 0.0, 0.0]),
+        ([0.5, 0.2], [0.0, 0.0, 0.0]),
+        ([3.0, 1.0], [1.0, 1.0, 1.0]),
     ];
-    for i in -10..=10 {
-        for j in -10..=10 {
-            cube_pos.push([i as f32, j as f32, -1.0]);
-        }
-    }
-    // this will sort primarily by z
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_x2, _x1).unwrap());
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_y2, _y1).unwrap());
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_z1, _z2).unwrap());
 
     mod vs {
         vulkano_shaders::shader!{
@@ -153,20 +124,18 @@ fn main() {
             src: "
 #version 450
 
-layout(location = 0) in vec3 position;
+layout(location = 0) in vec2 position;
 layout(location = 1) in vec3 color;
+layout(location = 2) in vec2 circle;
 
 layout(location = 0) out vec3 v_color;
+layout(location = 1) out vec2 v_circle;
 
 void main() {
     v_color = color;
+    v_circle = circle;
 
-    gl_Position = vec4(
-        0.05 * (position.x - position.y),
-        0.035 * (- position.x - position.y - 2.0 * position.z),
-        0.0,
-        1.0
-    );
+    gl_Position = vec4(0.05 * position, 0.0, 1.0);
 }"
         }
     }
@@ -178,10 +147,12 @@ void main() {
 #version 450
 
 layout(location = 0) in vec3 v_color;
+layout(location = 1) in vec2 v_circle;
 layout(location = 0) out vec4 f_color;
 
 void main() {
-    f_color = vec4(v_color, 1.0);
+    float rr = dot(v_circle, v_circle);
+    f_color = vec4(v_color, rr < 1.0 ? 1.0 : 0.0);
 }
 "
         }
@@ -225,6 +196,7 @@ void main() {
         // Use a resizable viewport set to draw over the entire window
         .viewports_dynamic_scissors_irrelevant(1)
         .fragment_shader(fs.main_entry_point(), ())
+        .blend_alpha_blending()
         // We have to indicate which subpass of which render pass this pipeline
         // is going to be used in. The pipeline will only be usable from this
         // particular subpass.
@@ -245,29 +217,6 @@ void main() {
     // hold it so that we don't block until we want to draw the next frame
     let mut previous_frame_end =
         Box::new(sync::now(device.clone())) as Box<GpuFuture>;
-
-    let mut char_pos = [-1.5, 1.0, 0.0];
-
-    let movement_bindings = Dir2 {
-        x: Dir1 {
-            pos: winit::VirtualKeyCode::D,
-            neg: winit::VirtualKeyCode::A,
-        },
-        y: Dir1 {
-            pos: winit::VirtualKeyCode::W,
-            neg: winit::VirtualKeyCode::S,
-        },
-    };
-    let mut movement = Dir2 {
-        x: Dir1 {
-            pos: false,
-            neg: false,
-        },
-        y: Dir1 {
-            pos: false,
-            neg: false,
-        },
-    };
 
     loop {
         // cleanup unused gpu resources
@@ -315,19 +264,9 @@ void main() {
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
-            let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
-            let mut char_drawn = false;
-            let [char_x, char_y, char_z] = char_pos;
-            for &[x, y, z] in &cube_pos {
-                // draw the character as soon as boxes start being "completely" behind it
-                if !char_drawn && z >= char_z && y <= char_y && x <= char_x {
-                    cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
-                    char_drawn = true;
-                }
-                cube_vertices(x, y, z, |v| cube_vs.push(v));
-            }
-            if !char_drawn {
-                cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
+            let mut cube_vs = Vec::with_capacity(18 * square_pos.len());
+            for &([x, y], color) in &square_pos {
+                square_vertices(x, y, color, |v| cube_vs.push(v));
             }
 
             vertex_buffer_pool
@@ -405,21 +344,11 @@ void main() {
                     if let VirtualKeyCode::Escape = key {
                         done = true;
                     }
-                    let val = state == ElementState::Pressed;
-                    movement.write_if_eq(&movement_bindings, &key, &val);
                 }
                 _ => ()
             }
         });
         if done { return; }
-
-        let mvec = movement.dir_vec();
-        let mut speed = 0.07;
-        if mvec[0] != 0.0 && mvec[1] != 0.0 {
-            speed *= 0.7;
-        }
-        char_pos[0] += speed * (mvec[0] + mvec[1]);
-        char_pos[1] += speed * (-mvec[0] + mvec[1]);
     }
 }
 
