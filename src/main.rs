@@ -7,6 +7,8 @@ extern crate vulkano_win;
 
 use std::sync::Arc;
 
+mod game;
+
 fn main() {
 
     //////////////////////////
@@ -248,6 +250,7 @@ void main() {
     // loop (incl. variables)
 
     use vulkano::sync::GpuFuture;
+    use game::{Action, UnitState, Timeline};
 
     // Dynamic viewports allow us to recreate just the viewport when the window
     // is resized Otherwise we would have to recreate the whole pipeline.
@@ -264,6 +267,19 @@ void main() {
     // hold it so that we don't block until we want to draw the next frame
     let mut previous_frame_end =
         Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
+
+    let timeline = {
+        let u0 = UnitState { id: 0, ..UnitState::none() };
+        let u1 = UnitState { id: 1, ..UnitState::none() };
+        Timeline(vec![
+            UnitState { time: 0, action: Action::Move([0.0, 1.0]), ..u0 },
+            UnitState { time: 0, action: Action::Move([1.0, 1.0]), ..u1 },
+            UnitState { time: 15, action: Action::Move([1.0, 0.0]), ..u0 },
+            UnitState { time: 27, action: Action::Move([1.0, 0.0]), ..u1 },
+        ])
+    };
+
+    let start = std::time::Instant::now();
 
     loop {
         // cleanup unused gpu resources
@@ -319,14 +335,16 @@ void main() {
         // color to clear screen with
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
+            let duration = std::time::Instant::now() - start;
+            let time =
+                duration.as_secs() * 1000 + duration.subsec_millis() as u64;
+            let states = timeline.snap(time / 100).0;
             // @Performance ideally we would reuse between frames
-            let mut vs = Vec::with_capacity(6 * 2 + 3);
-            triangle_vertices(
-                [[-3.0, -2.0], [3.0, 2.0], [-1.2, 0.8]],
-                [1.0, 1.0, 1.0], |v| vs.push(v)
-            );
-            square_vertices(-2.0, 0.0, 0.5, [0.0, 0.5, 0.0], |v| vs.push(v));
-            circle_vertices(1.0, 1.0, 0.5, [1.0, 0.0, 0.0], |v| vs.push(v));
+            let mut vs = Vec::with_capacity(6 * states.len());
+            for state in states {
+                let [x, y] = state.precise_position(time);
+                circle_vertices(x, y, 0.5, [1.0, 0.0, 0.0], |v| vs.push(v));
+            }
 
             vertex_buffer_pool
                 .chunk(vs.into_iter())
@@ -419,6 +437,11 @@ void main() {
             }
         });
         if done { return; }
+
+        /////////////////////////////////
+        // update state for next frame
+
+
     }
 }
 
