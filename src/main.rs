@@ -1,29 +1,22 @@
 #[macro_use]
 extern crate vulkano;
-extern crate vulkano_shaders;
+// note that vulkano_shaders and any other 2018 edition crates
+// won't be listed explicitly
 extern crate winit;
 extern crate vulkano_win;
-
-use vulkano::buffer::CpuBufferPool;
-use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
-use vulkano::device::{Device, DeviceExtensions};
-use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, Subpass, RenderPassAbstract};
-use vulkano::image::SwapchainImage;
-use vulkano::instance::{Instance, PhysicalDevice};
-use vulkano::pipeline::GraphicsPipeline;
-use vulkano::pipeline::viewport::Viewport;
-use vulkano::swapchain::{AcquireError, PresentMode, SurfaceTransform, Swapchain, SwapchainCreationError};
-use vulkano::swapchain;
-use vulkano::sync::{GpuFuture, FlushError};
-use vulkano::sync;
-
-use vulkano_win::VkSurfaceBuild;
-
-use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
 
 fn main() {
+
+    //////////////////////////
+    // window, device, etc.
+
+    use vulkano::instance::{Instance, PhysicalDevice};
+    use vulkano::device::{Device, DeviceExtensions};
+    use vulkano_win::VkSurfaceBuild;
+    use winit::{EventsLoop, WindowBuilder};
+
     let instance = {
         let extensions = vulkano_win::required_extensions();
 
@@ -57,6 +50,11 @@ fn main() {
 
     let queue = queues.next().unwrap();
 
+    ///////////////
+    // swapchain
+
+    use vulkano::swapchain::{PresentMode, SurfaceTransform, Swapchain};
+
     let (mut swapchain, images) = {
         let caps = surface.capabilities(physical).unwrap();
         let usage = caps.supported_usage_flags;
@@ -88,6 +86,10 @@ fn main() {
         ).unwrap()
     };
 
+    /////////////////////////
+    // shaders, vertex gen
+
+    use vulkano::buffer::CpuBufferPool;
 
     #[derive(Debug, Clone, Copy)]
     struct Vertex {
@@ -189,6 +191,12 @@ void main() {
     let vs = vs::Shader::load(device.clone()).unwrap();
     let fs = fs::Shader::load(device.clone()).unwrap();
 
+    ///////////////////////////
+    // render pass, pipeline
+
+    use vulkano::framebuffer::Subpass;
+    use vulkano::pipeline::GraphicsPipeline;
+
     let render_pass = Arc::new(single_pass_renderpass!(
         device.clone(),
         attachments: {
@@ -234,9 +242,18 @@ void main() {
         .build(device.clone())
         .unwrap());
 
+    ////////////////////////////
+    // loop (incl. variables)
+
+    use vulkano::sync::GpuFuture;
+
     // Dynamic viewports allow us to recreate just the viewport when the window
     // is resized Otherwise we would have to recreate the whole pipeline.
-    let mut dynamic_state = DynamicState { line_width: None, viewports: None, scissors: None };
+    let mut dynamic_state = vulkano::command_buffer::DynamicState {
+        line_width: None,
+        viewports: None,
+        scissors: None,
+    };
 
     let mut framebuffers = window_size_dependent_setup(&images, render_pass.clone(), &mut dynamic_state);
 
@@ -244,13 +261,17 @@ void main() {
 
     // hold it so that we don't block until we want to draw the next frame
     let mut previous_frame_end =
-        Box::new(sync::now(device.clone())) as Box<GpuFuture>;
+        Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
 
     loop {
         // cleanup unused gpu resources
         previous_frame_end.cleanup_finished();
 
+        ////////////
         // resize
+
+        use vulkano::swapchain::{AcquireError, SwapchainCreationError};
+
         if recreate_swapchain {
             // Get the new dimensions of the window.
             let dimensions = if let Some(dimensions) = window.get_inner_size() {
@@ -279,7 +300,9 @@ void main() {
         }
 
         // blocks if all images are being drawn to
-        let (image_num, acquire_future) = match swapchain::acquire_next_image(swapchain.clone(), None) {
+        let next =
+            vulkano::swapchain::acquire_next_image(swapchain.clone(), None);
+        let (image_num, acquire_future) = match next {
             Ok(r) => r,
             Err(AcquireError::OutOfDate) => {
                 recreate_swapchain = true;
@@ -287,6 +310,9 @@ void main() {
             },
             Err(err) => panic!("{:?}", err)
         };
+
+        /////////////////
+        // draw things
 
         // color to clear screen with
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
@@ -305,6 +331,10 @@ void main() {
                 .unwrap()
         };
 
+        ///////////////////////
+        // gpu do your thing
+
+        use vulkano::command_buffer::AutoCommandBufferBuilder;
         let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(
             device.clone(),
             queue.family(),
@@ -341,17 +371,20 @@ void main() {
             .then_swapchain_present(queue.clone(), swapchain.clone(), image_num)
             .then_signal_fence_and_flush();
 
+        use vulkano::sync::FlushError;
         match future {
             Ok(future) => {
                 previous_frame_end = Box::new(future) as Box<_>;
             }
             Err(FlushError::OutOfDate) => {
                 recreate_swapchain = true;
-                previous_frame_end = Box::new(sync::now(device.clone())) as Box<_>;
+                previous_frame_end =
+                    Box::new(vulkano::sync::now(device.clone())) as Box<_>;
             }
             Err(e) => {
                 println!("{:?}", e);
-                previous_frame_end = Box::new(sync::now(device.clone())) as Box<_>;
+                previous_frame_end =
+                    Box::new(vulkano::sync::now(device.clone())) as Box<_>;
             }
         }
 
@@ -365,6 +398,10 @@ void main() {
 
         // Handling the window events in order to close the program when the user wants to close
         // it.
+
+        //////////////////////////////
+        // window events/user input
+
         let mut done = false;
         events_loop.poll_events(|ev| {
             use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCode, ElementState};
@@ -383,12 +420,20 @@ void main() {
     }
 }
 
+use vulkano::command_buffer::DynamicState;
+use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract};
+use vulkano::image::SwapchainImage;
+use winit::Window;
+
 /// This method is called once during initialization, then again whenever the window is resized
 fn window_size_dependent_setup(
     images: &[Arc<SwapchainImage<Window>>],
     render_pass: Arc<RenderPassAbstract + Send + Sync>,
     dynamic_state: &mut DynamicState
 ) -> Vec<Arc<FramebufferAbstract + Send + Sync>> {
+
+    use vulkano::pipeline::viewport::Viewport;
+
     let dimensions = images[0].dimensions();
 
     let viewport = Viewport {
