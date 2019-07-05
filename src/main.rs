@@ -112,12 +112,13 @@ fn main() {
 
     fn circle_vertices<F: FnMut(Vertex)>(
         x: f32, y: f32,
+        r: f32,
         color: [f32; 3],
         mut f: F
     ) {
         square_coords(|dx, dy|
             f(Vertex {
-                position: [x+0.5*dx, y+0.5*dy],
+                position: [x+r*dx, y+r*dy],
                 color,
                 circle: [dx, dy]
             })
@@ -126,12 +127,13 @@ fn main() {
 
     fn square_vertices<F: FnMut(Vertex)>(
         x: f32, y: f32,
+        r: f32,
         color: [f32; 3],
         mut f: F
     ) {
         square_coords(|dx, dy|
             f(Vertex {
-                position: [x+0.5*dx, y+0.5*dy],
+                position: [x+r*dx, y+r*dy],
                 color,
                 circle: [0.0, 0.0],  // all pixels will be transparent
             })
@@ -323,8 +325,8 @@ void main() {
                 [[-3.0, -2.0], [3.0, 2.0], [-1.2, 0.8]],
                 [1.0, 1.0, 1.0], |v| vs.push(v)
             );
-            square_vertices(-2.0, 0.0, [0.0, 0.5, 0.0], |v| vs.push(v));
-            circle_vertices(1.0, 1.0, [1.0, 0.0, 0.0], |v| vs.push(v));
+            square_vertices(-2.0, 0.0, 0.5, [0.0, 0.5, 0.0], |v| vs.push(v));
+            circle_vertices(1.0, 1.0, 0.5, [1.0, 0.0, 0.0], |v| vs.push(v));
 
             vertex_buffer_pool
                 .chunk(vs.into_iter())
