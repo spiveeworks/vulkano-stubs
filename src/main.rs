@@ -250,7 +250,6 @@ void main() {
     // loop (incl. variables)
 
     use vulkano::sync::GpuFuture;
-    use game::{Action, UnitState, Timeline};
 
     // Dynamic viewports allow us to recreate just the viewport when the window
     // is resized Otherwise we would have to recreate the whole pipeline.
@@ -269,14 +268,17 @@ void main() {
         Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
 
     let timeline = {
-        let u0 = UnitState { id: 0, ..UnitState::none() };
-        let u1 = UnitState { id: 1, ..UnitState::none() };
-        Timeline(vec![
-            UnitState { time: 0, action: Action::Move([0.0, 1.0]), ..u0 },
-            UnitState { time: 0, action: Action::Move([1.0, 1.0]), ..u1 },
-            UnitState { time: 15, action: Action::Move([1.0, 0.0]), ..u0 },
-            UnitState { time: 27, action: Action::Move([1.0, 0.0]), ..u1 },
-        ])
+        use game::{UnitState, Plan};
+        use game::Command::*;
+
+        let u0 = UnitState { id: 0, pos: [-3.0, 0.0], ..UnitState::none() };
+        let u1 = UnitState { id: 1, pos: [ 3.0, 0.0], ..UnitState::none() };
+        let plans = vec![
+            Plan(u0, 0, vec![Nav([0.0, 2.0]), Nav([3.0, 0.0])]),
+            Plan(u1, 0, vec![Wait(10), Nav([-3.0, 0.0])]),
+        ];
+
+        game::generate_timeline(plans)
     };
 
     let start = std::time::Instant::now();
@@ -440,7 +442,6 @@ void main() {
 
         /////////////////////////////////
         // update state for next frame
-
 
     }
 }
