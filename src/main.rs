@@ -340,14 +340,22 @@ void main() {
                 }
             }
 
-            for &([x, y], flav) in &game.world {
+            for &([x, y], disp, flav) in &game.world {
                 use game::Flavor::*;
                 let color = match flav {
                     KnickKnack => [0.2, 0.2, 0.2],
                 };
+                use game::Displacement;
+                let [dx, dy] = match disp {
+                    Displacement::TL => [-0.2, -0.2],
+                    Displacement::TR => [ 0.2, -0.2],
+                    Displacement::M  => [ 0.0,  0.0],
+                    Displacement::BL => [-0.2,  0.2],
+                    Displacement::BR => [ 0.2,  0.2],
+                };
                 circle_vertices(
-                    x as f32,
-                    y as f32,
+                    x as f32 + dx,
+                    y as f32 + dy,
                     0.1,
                     color,
                     |v| vs.push(v),

@@ -5,9 +5,18 @@ pub enum Flavor {
     KnickKnack,
 }
 
+#[derive(Clone, Copy)]
+pub enum Displacement {
+    TL,
+    TR,
+    M,
+    BL,
+    BR,
+}
+
 const NUM_FLAVORS: u8 = Flavor::KnickKnack as u8 + 1;
 
-pub type World = Vec<([i8; 2], Flavor)>;
+pub type World = Vec<([i8; 2], Displacement, Flavor)>;
 pub type Inv = Vec<Flavor>;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -69,12 +78,20 @@ impl Game {
                 0 => Flavor::KnickKnack,
                 _ => unreachable!(),
             };
-            self.world.push(([new_x, new_y], flav));
+            let disp = match self.rng.gen_range(0, 5) {
+                0 => Displacement::TL,
+                1 => Displacement::TR,
+                2 => Displacement::M,
+                3 => Displacement::BL,
+                4 => Displacement::BR,
+                _ => unreachable!(),
+            };
+            self.world.push(([new_x, new_y], disp, flav));
         }
 
         let mut i = 0;
         while i < self.world.len() {
-            let (pos, flav) = self.world[i];
+            let (pos, _, flav) = self.world[i];
             if pos == self.pos {
                 self.inv.push(flav);
                 self.world.remove(i);
