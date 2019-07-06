@@ -490,6 +490,7 @@ void main() {
                         S | Down => inputs.push(game::Dir::Down),
                         A | Left => inputs.push(game::Dir::Left),
                         D | Right => inputs.push(game::Dir::Right),
+                        R => game = Default::default(),
                         _ => (),
                     }
                 }
