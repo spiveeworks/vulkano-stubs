@@ -371,20 +371,26 @@ void main() {
                 |v| vs.push(v),
             );
 
-            for (i, flav) in game.items.iter().enumerate() {
+            for (i, &flav) in game.items.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
                 use game::Item::*;
-                let (color, radius) = match flav {
-                    Hunger(i) => ([0.5, 0.2, 0.0], 0.3),
-                    Nourishment(i) => ([0.0, 0.0, 0.4], 0.3),
-                    Health => ([0.5, 0.0, 0.0], 0.3),
-                    Damage => ([1.0, 0.0, 0.0], 0.3),
+                let (color, size) = match flav {
+                    Hunger(i) => (
+                        [0.5, 0.2, 0.0],
+                        i as f32 / game::HUNGER_TIMER as f32
+                    ),
+                    Nourishment(i) => (
+                        [0.0, 0.0, 0.4],
+                        i as f32 / game::NOURISH_TIMER as f32
+                    ),
+                    Health => ([0.5, 0.0, 0.0], 1.0),
+                    Damage => ([1.0, 0.0, 0.0], 1.0),
                 };
                 circle_vertices(
                     x as f32,
                     y as f32,
-                    radius,
+                    0.3 * size,
                     color,
                     |v| vs.push(v),
                 );

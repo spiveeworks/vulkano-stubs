@@ -14,12 +14,15 @@ pub enum Item {
     Damage,
 }
 
+pub const HUNGER_TIMER: u8 = 10;
+pub const NOURISH_TIMER: u8 = 5;
+
 impl PickupFlavor {
     pub fn pickup(self: Self) -> Item {
         use self::PickupFlavor::*;
         match self {
-            Hunger => Item::Hunger(10),
-            Nourishment => Item::Nourishment(5),
+            Hunger => Item::Hunger(HUNGER_TIMER),
+            Nourishment => Item::Nourishment(NOURISH_TIMER),
         }
     }
 }
