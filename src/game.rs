@@ -71,5 +71,17 @@ impl Game {
             };
             self.world.push(([new_x, new_y], flav));
         }
+
+        let mut i = 0;
+        while i < self.world.len() {
+            let (pos, flav) = self.world[i];
+            if pos == self.pos {
+                self.inv.push(flav);
+                self.world.remove(i);
+            } else {
+                i += 1;
+            }
+        }
     }
 }
+
