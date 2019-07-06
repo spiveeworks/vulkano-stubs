@@ -6,6 +6,7 @@ pub enum PickupFlavor {
     Nourishment,
 }
 
+#[derive(Clone, Copy)]
 pub enum Item {
     Hunger(u8),
     Nourishment(u8),
@@ -34,8 +35,8 @@ pub enum Displacement {
 
 const NUM_FLAVORS: u8 = PickupFlavor::Nourishment as u8 + 1;
 
+// @Readability struct Pickup;?
 pub type World = Vec<([i8; 2], Displacement, PickupFlavor)>;
-pub type Inv = Vec<Item>;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Dir {
@@ -70,7 +71,7 @@ pub struct Game {
     pub pos: [i8; 2],
     rng: Rng,
     pub world: World,
-    pub inv: Inv,
+    pub items: Vec<Item>,
 }
 
 impl Game {
@@ -100,14 +101,47 @@ impl Game {
             self.world.push(([new_x, new_y], disp, flav));
         }
 
-        let mut i = 0;
-        while i < self.world.len() {
-            let (pos, _, flav) = self.world[i];
-            if pos == self.pos {
-                self.inv.push(flav.pickup());
-                self.world.remove(i);
-            } else {
-                i += 1;
+        let mut pickups = Vec::new();
+        {
+            let mut i = 0;
+            while i < self.world.len() {
+                let (pos, _, flav) = self.world[i];
+                if pos == self.pos {
+                    pickups.push(flav.pickup());
+                    self.world.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
+
+        while pickups.len() > 0 {
+            let pickup = pickups.pop().unwrap();
+            let mut matched = false;
+            let mut i = self.items.len();
+            while !matched && i > 0 {
+                i -= 1;
+
+                use self::Item::*;
+                match (self.items[i], pickup) {
+                    (Nourishment(_), Hunger(_)) |
+                    (Hunger(_), Nourishment(_)) => {
+                        self.items.remove(i);
+                        pickups.push(Item::Health);
+                        matched = true;
+                        break;
+                    },
+                    (Health, Damage) |
+                    (Damage, Health) => {
+                        self.items.remove(i);
+                        matched = true;
+                        break;
+                    },
+                    (_, _) => (),
+                }
+            }
+            if !matched {
+                self.items.push(pickup);
             }
         }
     }

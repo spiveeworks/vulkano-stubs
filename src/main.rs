@@ -371,7 +371,7 @@ void main() {
                 |v| vs.push(v),
             );
 
-            for (i, flav) in game.inv.iter().enumerate() {
+            for (i, flav) in game.items.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
                 use game::Item::*;
