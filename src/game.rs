@@ -10,12 +10,13 @@ pub enum PickupFlavor {
 pub enum Item {
     Hunger(u8),
     Nourishment(u8),
-    Health,
+    Health(u8),
     Damage,
 }
 
 pub const HUNGER_TIMER: u8 = 10;
 pub const NOURISH_TIMER: u8 = 5;
+pub const HEALTH_TIMER: u8 = 20;
 
 impl PickupFlavor {
     pub fn pickup(self: Self) -> Item {
@@ -131,12 +132,12 @@ impl Game {
                         (Nourishment(_), Hunger(_)) |
                         (Hunger(_), Nourishment(_)) => {
                             game.items.remove(i);
-                            pickups.push(Item::Health);
+                            pickups.push(Health(20));
                             matched = true;
                             break;
                         },
-                        (Health, Damage) |
-                        (Damage, Health) => {
+                        (Health(_), Damage) |
+                        (Damage, Health(_)) => {
                             game.items.remove(i);
                             matched = true;
                             break;
@@ -169,6 +170,14 @@ impl Game {
                     Nourishment(n) => {
                         if n > 0 {
                             self.items[i] = Nourishment(n-1);
+                            i += 1;
+                        } else {
+                            self.items.remove(i);
+                        }
+                    },
+                    Health(n) => {
+                        if n > 0 {
+                            self.items[i] = Health(n-1);
                             i += 1;
                         } else {
                             self.items.remove(i);

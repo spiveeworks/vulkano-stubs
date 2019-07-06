@@ -384,7 +384,10 @@ void main() {
                         [0.0, 0.0, 0.4],
                         i as f32 / game::NOURISH_TIMER as f32
                     ),
-                    Health => ([0.5, 0.0, 0.0], 1.0),
+                    Health(i) => (
+                        [0.5, 0.0, 0.0],
+                        i as f32 / game::HEALTH_TIMER as f32
+                    ),
                     Damage => ([1.0, 0.0, 0.0], 1.0),
                 };
                 circle_vertices(
