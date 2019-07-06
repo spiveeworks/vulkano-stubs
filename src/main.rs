@@ -276,6 +276,7 @@ void main() {
         game::Flavor::KnickKnack,
         game::Flavor::KnickKnack,
     ];
+    let mut pos = [0, 0];
 
     loop {
         // cleanup unused gpu resources
@@ -344,7 +345,13 @@ void main() {
                     );
                 }
             }
-            circle_vertices(0.0, 0.0, 0.3, [1.0, 0.0, 0.0], |v| vs.push(v));
+            circle_vertices(
+                pos[0] as f32,
+                pos[1] as f32,
+                0.3,
+                [1.0, 0.0, 0.0],
+                |v| vs.push(v),
+            );
 
             for (i, flav) in collection.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
@@ -439,20 +446,31 @@ void main() {
         // window events/user input
 
         let mut done = false;
+        let mut inputs = Vec::new();
         events_loop.poll_events(|ev| {
-            use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCode, ElementState};
+            use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState};
             match ev {
                 Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => done = true,
                 Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
-                Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), state, .. }), .. } => {
-                    if let VirtualKeyCode::Escape = key {
-                        done = true;
+                Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), state: ElementState::Pressed, .. }), .. } => {
+                    use winit::VirtualKeyCode::*;
+                    match key {
+                        Escape => done = true,
+                        W | Up => inputs.push(game::Dir::Up),
+                        S | Down => inputs.push(game::Dir::Down),
+                        A | Left => inputs.push(game::Dir::Left),
+                        D | Right => inputs.push(game::Dir::Right),
+                        _ => (),
                     }
                 }
                 _ => ()
             }
         });
         if done { return; }
+
+        for input in inputs {
+            game::update(&mut pos, input);
+        }
     }
 }
 
