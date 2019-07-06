@@ -1,4 +1,4 @@
-pub use rand::rngs::StdRng as Rng;
+pub use rand::rngs::ThreadRng as Rng;
 
 #[derive(Clone, Copy)]
 pub enum Flavor {
@@ -49,7 +49,7 @@ impl Game {
     pub fn new() -> Self {
         Game {
             pos: [0, 0],
-            rng: rand::SeedableRng::seed_from_u64(0),
+            rng: rand::thread_rng(),
             world: Vec::new(),
             inv: vec![Flavor::KnickKnack],
         }
