@@ -2,18 +2,23 @@ pub use rand::rngs::ThreadRng as Rng;
 
 #[derive(Clone, Copy)]
 pub enum PickupFlavor {
-    KnickKnack,
+    Hunger,
+    Nourishment,
 }
 
 pub enum Item {
-    KnickKnack,
+    Hunger(u8),
+    Nourishment(u8),
+    Health,
+    Damage,
 }
 
 impl PickupFlavor {
     pub fn pickup(self: Self) -> Item {
         use self::PickupFlavor::*;
         match self {
-            KnickKnack => Item::KnickKnack,
+            Hunger => Item::Hunger(10),
+            Nourishment => Item::Nourishment(5),
         }
     }
 }
@@ -27,7 +32,7 @@ pub enum Displacement {
     BR,
 }
 
-const NUM_FLAVORS: u8 = PickupFlavor::KnickKnack as u8 + 1;
+const NUM_FLAVORS: u8 = PickupFlavor::Nourishment as u8 + 1;
 
 pub type World = Vec<([i8; 2], Displacement, PickupFlavor)>;
 pub type Inv = Vec<Item>;
@@ -80,7 +85,8 @@ impl Game {
             let new_x = self.rng.gen_range(-7, 8);
             let new_y = self.rng.gen_range(-7, 8);
             let flav = match self.rng.gen_range(0, NUM_FLAVORS) {
-                0 => PickupFlavor::KnickKnack,
+                0 => PickupFlavor::Hunger,
+                1 => PickupFlavor::Nourishment,
                 _ => unreachable!(),
             };
             let disp = match self.rng.gen_range(0, 5) {

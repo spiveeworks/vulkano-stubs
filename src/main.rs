@@ -343,7 +343,8 @@ void main() {
             for &([x, y], disp, flav) in &game.world {
                 use game::PickupFlavor::*;
                 let color = match flav {
-                    KnickKnack => [0.2, 0.2, 0.2],
+                    Hunger => [0.5, 0.2, 0.0],
+                    Nourishment => [0.0, 0.0, 0.4],
                 };
                 use game::Displacement;
                 let [dx, dy] = match disp {
@@ -374,13 +375,16 @@ void main() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
                 use game::Item::*;
-                let color = match flav {
-                    KnickKnack => [0.2, 0.2, 0.2],
+                let (color, radius) = match flav {
+                    Hunger(i) => ([0.5, 0.2, 0.0], 0.3),
+                    Nourishment(i) => ([0.0, 0.0, 0.4], 0.3),
+                    Health => ([0.5, 0.0, 0.0], 0.3),
+                    Damage => ([1.0, 0.0, 0.0], 0.3),
                 };
                 circle_vertices(
                     x as f32,
                     y as f32,
-                    0.3,
+                    radius,
                     color,
                     |v| vs.push(v),
                 );
