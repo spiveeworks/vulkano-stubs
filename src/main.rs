@@ -270,7 +270,7 @@ void main() {
     let mut previous_frame_end =
         Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
 
-    let mut game = game::Game::new();
+    let mut game: game::Game = Default::default();
 
     loop {
         // cleanup unused gpu resources

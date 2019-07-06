@@ -47,6 +47,7 @@ fn wrap_pos([x, y]: [i8; 2]) -> [i8; 2] {
     [wrap_coord(x), wrap_coord(y)]
 }
 
+#[derive(Default)]
 pub struct Game {
     pub pos: [i8; 2],
     rng: Rng,
@@ -55,15 +56,6 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
-        Game {
-            pos: [0, 0],
-            rng: rand::thread_rng(),
-            world: Vec::new(),
-            inv: vec![Flavor::KnickKnack],
-        }
-    }
-
     pub fn update(
         self: &mut Game,
         input: Dir,
