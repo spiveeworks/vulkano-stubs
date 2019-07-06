@@ -268,6 +268,15 @@ void main() {
     let mut previous_frame_end =
         Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
 
+    let mut collection = vec![
+        game::Flavor::KnickKnack,
+        game::Flavor::KnickKnack,
+        game::Flavor::KnickKnack,
+        game::Flavor::KnickKnack,
+        game::Flavor::KnickKnack,
+        game::Flavor::KnickKnack,
+    ];
+
     loop {
         // cleanup unused gpu resources
         previous_frame_end.cleanup_finished();
@@ -336,6 +345,22 @@ void main() {
                 }
             }
             circle_vertices(0.0, 0.0, 0.3, [1.0, 0.0, 0.0], |v| vs.push(v));
+
+            for (i, flav) in collection.iter().enumerate() {
+                let x = i as i64 % 4 + 8;
+                let y = i as i64 / 4 - 7;
+                use game::Flavor::*;
+                let color = match flav {
+                    KnickKnack => [0.2, 0.2, 0.2],
+                };
+                circle_vertices(
+                    x as f32,
+                    y as f32,
+                    0.3,
+                    color,
+                    |v| vs.push(v),
+                );
+            }
 
             vertex_buffer_pool
                 .chunk(vs.into_iter())
