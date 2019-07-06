@@ -169,7 +169,8 @@ void main() {
     v_color = color;
     v_circle = circle;
 
-    gl_Position = vec4(0.1 * position, 0.0, 1.0);
+    vec2 disp = position - vec2(2.0, 0.0);
+    gl_Position = vec4(0.1 * disp, 0.0, 1.0);
 }"
         }
     }
@@ -323,8 +324,8 @@ void main() {
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
             let mut vs = Vec::with_capacity(6 * 400);
-            for i in -8..9 {
-                for j in -8..9 {
+            for i in -7..8 {
+                for j in -7..8 {
                     square_vertices(
                         i as f32,
                         j as f32,
