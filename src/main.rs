@@ -341,7 +341,7 @@ void main() {
             }
 
             for &([x, y], disp, flav) in &game.world {
-                use game::Flavor::*;
+                use game::PickupFlavor::*;
                 let color = match flav {
                     KnickKnack => [0.2, 0.2, 0.2],
                 };
@@ -373,7 +373,7 @@ void main() {
             for (i, flav) in game.inv.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
-                use game::Flavor::*;
+                use game::Item::*;
                 let color = match flav {
                     KnickKnack => [0.2, 0.2, 0.2],
                 };

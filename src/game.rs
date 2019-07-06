@@ -1,8 +1,21 @@
 pub use rand::rngs::ThreadRng as Rng;
 
 #[derive(Clone, Copy)]
-pub enum Flavor {
+pub enum PickupFlavor {
     KnickKnack,
+}
+
+pub enum Item {
+    KnickKnack,
+}
+
+impl PickupFlavor {
+    pub fn pickup(self: Self) -> Item {
+        use self::PickupFlavor::*;
+        match self {
+            KnickKnack => Item::KnickKnack,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -14,10 +27,10 @@ pub enum Displacement {
     BR,
 }
 
-const NUM_FLAVORS: u8 = Flavor::KnickKnack as u8 + 1;
+const NUM_FLAVORS: u8 = PickupFlavor::KnickKnack as u8 + 1;
 
-pub type World = Vec<([i8; 2], Displacement, Flavor)>;
-pub type Inv = Vec<Flavor>;
+pub type World = Vec<([i8; 2], Displacement, PickupFlavor)>;
+pub type Inv = Vec<Item>;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Dir {
@@ -67,7 +80,7 @@ impl Game {
             let new_x = self.rng.gen_range(-7, 8);
             let new_y = self.rng.gen_range(-7, 8);
             let flav = match self.rng.gen_range(0, NUM_FLAVORS) {
-                0 => Flavor::KnickKnack,
+                0 => PickupFlavor::KnickKnack,
                 _ => unreachable!(),
             };
             let disp = match self.rng.gen_range(0, 5) {
@@ -85,7 +98,7 @@ impl Game {
         while i < self.world.len() {
             let (pos, _, flav) = self.world[i];
             if pos == self.pos {
-                self.inv.push(flav);
+                self.inv.push(flav.pickup());
                 self.world.remove(i);
             } else {
                 i += 1;
