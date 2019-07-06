@@ -7,6 +7,8 @@ extern crate vulkano_win;
 
 use std::sync::Arc;
 
+mod game;
+
 fn main() {
 
     //////////////////////////
@@ -167,7 +169,7 @@ void main() {
     v_color = color;
     v_circle = circle;
 
-    gl_Position = vec4(0.05 * position, 0.0, 1.0);
+    gl_Position = vec4(0.1 * position, 0.0, 1.0);
 }"
         }
     }
@@ -320,13 +322,19 @@ void main() {
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
-            let mut vs = Vec::with_capacity(6 * 2 + 3);
-            triangle_vertices(
-                [[-3.0, -2.0], [3.0, 2.0], [-1.2, 0.8]],
-                [1.0, 1.0, 1.0], |v| vs.push(v)
-            );
-            square_vertices(-2.0, 0.0, 0.5, [0.0, 0.5, 0.0], |v| vs.push(v));
-            circle_vertices(1.0, 1.0, 0.5, [1.0, 0.0, 0.0], |v| vs.push(v));
+            let mut vs = Vec::with_capacity(6 * 400);
+            for i in -8..9 {
+                for j in -8..9 {
+                    square_vertices(
+                        i as f32,
+                        j as f32,
+                        0.4,
+                        [0.4, 0.4, 0.4],
+                        |v| vs.push(v),
+                    );
+                }
+            }
+            circle_vertices(0.0, 0.0, 0.3, [1.0, 0.0, 0.0], |v| vs.push(v));
 
             vertex_buffer_pool
                 .chunk(vs.into_iter())
