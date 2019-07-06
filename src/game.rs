@@ -115,35 +115,68 @@ impl Game {
             }
         }
 
-        while pickups.len() > 0 {
-            let pickup = pickups.pop().unwrap();
-            let mut matched = false;
-            let mut i = self.items.len();
-            while !matched && i > 0 {
-                i -= 1;
+        fn react_pickups(game: &mut Game, mut pickups: Vec<Item>) {
+            while pickups.len() > 0 {
+                let pickup = pickups.pop().unwrap();
+                let mut matched = false;
+                let mut i = game.items.len();
+                while !matched && i > 0 {
+                    i -= 1;
 
-                use self::Item::*;
-                match (self.items[i], pickup) {
-                    (Nourishment(_), Hunger(_)) |
-                    (Hunger(_), Nourishment(_)) => {
-                        self.items.remove(i);
-                        pickups.push(Item::Health);
-                        matched = true;
-                        break;
-                    },
-                    (Health, Damage) |
-                    (Damage, Health) => {
-                        self.items.remove(i);
-                        matched = true;
-                        break;
-                    },
-                    (_, _) => (),
+                    use self::Item::*;
+                    match (game.items[i], pickup) {
+                        (Nourishment(_), Hunger(_)) |
+                        (Hunger(_), Nourishment(_)) => {
+                            game.items.remove(i);
+                            pickups.push(Item::Health);
+                            matched = true;
+                            break;
+                        },
+                        (Health, Damage) |
+                        (Damage, Health) => {
+                            game.items.remove(i);
+                            matched = true;
+                            break;
+                        },
+                        (_, _) => (),
+                    }
+                }
+                if !matched {
+                    game.items.push(pickup);
                 }
             }
-            if !matched {
-                self.items.push(pickup);
+        }
+        react_pickups(self, pickups);
+
+        let mut pickups = Vec::new();
+        {
+            let mut i = 0;
+            while i < self.items.len() {
+                use self::Item::*;
+                match self.items[i] {
+                    Hunger(n) => {
+                        if n > 0 {
+                            self.items[i] = Hunger(n-1);
+                            i += 1;
+                        } else {
+                            self.items.remove(i);
+                            pickups.push(Damage);
+                        }
+                    },
+                    Nourishment(n) => {
+                        if n > 0 {
+                            self.items[i] = Nourishment(n-1);
+                            i += 1;
+                        } else {
+                            self.items.remove(i);
+                        }
+                    },
+                    _ => i += 1,
+                }
             }
         }
+
+        react_pickups(self, pickups);
     }
 }
 
