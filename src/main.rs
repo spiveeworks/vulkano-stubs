@@ -5,6 +5,8 @@ extern crate vulkano;
 extern crate winit;
 extern crate vulkano_win;
 
+extern crate rand;
+
 use std::sync::Arc;
 
 mod game;
@@ -268,15 +270,7 @@ void main() {
     let mut previous_frame_end =
         Box::new(vulkano::sync::now(device.clone())) as Box<GpuFuture>;
 
-    let mut collection = vec![
-        game::Flavor::KnickKnack,
-        game::Flavor::KnickKnack,
-        game::Flavor::KnickKnack,
-        game::Flavor::KnickKnack,
-        game::Flavor::KnickKnack,
-        game::Flavor::KnickKnack,
-    ];
-    let mut pos = [0, 0];
+    let mut game = game::Game::new();
 
     loop {
         // cleanup unused gpu resources
@@ -345,15 +339,30 @@ void main() {
                     );
                 }
             }
+
+            for &([x, y], flav) in &game.world {
+                use game::Flavor::*;
+                let color = match flav {
+                    KnickKnack => [0.2, 0.2, 0.2],
+                };
+                circle_vertices(
+                    x as f32,
+                    y as f32,
+                    0.1,
+                    color,
+                    |v| vs.push(v),
+                );
+            }
+
             circle_vertices(
-                pos[0] as f32,
-                pos[1] as f32,
+                game.pos[0] as f32,
+                game.pos[1] as f32,
                 0.3,
                 [1.0, 0.0, 0.0],
                 |v| vs.push(v),
             );
 
-            for (i, flav) in collection.iter().enumerate() {
+            for (i, flav) in game.inv.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
                 use game::Flavor::*;
@@ -469,7 +478,7 @@ void main() {
         if done { return; }
 
         for input in inputs {
-            game::update(&mut pos, input);
+            game.update(input);
         }
     }
 }
