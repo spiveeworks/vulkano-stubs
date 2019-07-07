@@ -83,8 +83,11 @@ impl Game {
         self: &mut Game,
         input: Dir,
     ) {
+        // move player
         let [dx, dy] = input.to_vec();
         self.pos = wrap_pos([self.pos[0] + dx, self.pos[1] + dy]);
+
+        // place new pickup
         {
             use rand::Rng;
             let new_x = self.rng.gen_range(0, 15);
@@ -98,6 +101,7 @@ impl Game {
             self.world[new_x][new_y][disp] = Some(flav);
         }
 
+        // pickup items under player
         let mut pickups = Vec::new();
         {
             let [x, y] = self.pos;
@@ -110,41 +114,7 @@ impl Game {
             *ground = [None; 5];
         }
 
-        fn react_pickups(game: &mut Game, mut pickups: Vec<Item>) {
-            while pickups.len() > 0 {
-                let pickup = pickups.pop().unwrap();
-                let mut matched = false;
-                let mut i = game.items.len();
-                while !matched && i > 0 {
-                    i -= 1;
-
-                    use self::Item::*;
-                    match (game.items[i], pickup) {
-                        (Nourishment(_), Hunger(_)) |
-                        (Hunger(_), Nourishment(_)) => {
-                            game.items.remove(i);
-                            pickups.push(Health(HEALTH_TIMER));
-                            matched = true;
-                            break;
-                        },
-                        (Health(_), Damage) |
-                        (Damage, Health(_)) => {
-                            game.items.remove(i);
-                            pickups.push(Hunger(HUNGER_TIMER));
-                            matched = true;
-                            break;
-                        },
-                        (_, _) => (),
-                    }
-                }
-                if !matched && game.items.len() < INV_CAP {
-                    game.items.push(pickup);
-                }
-            }
-        }
-        react_pickups(self, pickups);
-
-        let mut pickups = Vec::new();
+        // age inventory items
         {
             let mut i = 0;
             while i < self.items.len() {
@@ -181,10 +151,41 @@ impl Game {
             }
         }
 
-        react_pickups(self, pickups);
+        // react pickups
+        {
+            while pickups.len() > 0 {
+                let pickup = pickups.pop().unwrap();
+                let mut matched = false;
+                let mut i = self.items.len();
+                while !matched && i > 0 {
+                    i -= 1;
+
+                    use self::Item::*;
+                    match (self.items[i], pickup) {
+                        (Nourishment(_), Hunger(_)) |
+                        (Hunger(_), Nourishment(_)) => {
+                            self.items.remove(i);
+                            pickups.push(Health(HEALTH_TIMER));
+                            matched = true;
+                            break;
+                        },
+                        (Health(_), Damage) |
+                        (Damage, Health(_)) => {
+                            self.items.remove(i);
+                            pickups.push(Hunger(HUNGER_TIMER));
+                            matched = true;
+                            break;
+                        },
+                        (_, _) => (),
+                    }
+                }
+                if !matched && self.items.len() < INV_CAP {
+                    self.items.push(pickup);
+                }
+            }
+        }
 
         // count everything
-
         self.counts = [0; 4];
 
         for x in 0..15 {
