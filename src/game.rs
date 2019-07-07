@@ -156,7 +156,7 @@ impl Game {
                         (_, _) => (),
                     }
                 }
-                if !matched {
+                if !matched && game.items.len() < INV_CAP {
                     game.items.push(pickup);
                 }
             }
