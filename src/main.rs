@@ -357,7 +357,7 @@ void main() {
 
             // background
             let mut max = 10;
-            for i in 0..3 {
+            for i in 0..2 {
                 if max < game.max_counts[i] {
                     max = game.max_counts[i];
                 }
@@ -368,10 +368,13 @@ void main() {
                 (0.0, HEALTH_C),
                 (0.0, DAMAGE_C),
             ];
-            for i in 0..3 {
-                heights[i].0 = game.counts[i] as f32 / max as f32;
+            for i in 0..4 {
+                heights[i].0 = game.counts[i] as f32;
             }
-            heights[3].0 = game.counts[3] as f32 / game::INV_CAP as f32;
+            heights[0].0 /= max as f32;
+            heights[1].0 /= max as f32;
+            heights[2].0 /= game::INV_CAP as f32;
+            heights[3].0 /= game::INV_CAP as f32;
             // descending order
             heights[0..3].sort_by(|&(l, _), &(r, _)|
                 std::cmp::PartialOrd::partial_cmp(&r, &l).unwrap()
@@ -388,9 +391,18 @@ void main() {
             }
 
             // water lines
-            let line_cols = [HUNGER_C, NOURISH_C, HEALTH_C];
-            for (i, &color) in line_cols.iter().enumerate() {
-                let height = game.max_counts[i] as f32 / max as f32;
+            let mut lines = [
+                (0.0, HUNGER_C),
+                (0.0, NOURISH_C),
+                (0.0, HEALTH_C),
+            ];
+            for i in 0..3 {
+                lines[i].0 = game.max_counts[i] as f32;
+            }
+            lines[0].0 /= max as f32;
+            lines[1].0 /= max as f32;
+            lines[2].0 /= game::INV_CAP as f32;
+            for &(height, color) in &lines {
                 let pos = SCREEN_BOTTOM_EDGE - height * SCREEN_HEIGHT;
                 rectangle_vertices(
                     SCREEN_LEFT_EDGE,
