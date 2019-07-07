@@ -132,13 +132,14 @@ impl Game {
                         (Nourishment(_), Hunger(_)) |
                         (Hunger(_), Nourishment(_)) => {
                             game.items.remove(i);
-                            pickups.push(Health(20));
+                            pickups.push(Health(HEALTH_TIMER));
                             matched = true;
                             break;
                         },
                         (Health(_), Damage) |
                         (Damage, Health(_)) => {
                             game.items.remove(i);
+                            pickups.push(Hunger(HUNGER_TIMER));
                             matched = true;
                             break;
                         },
@@ -181,6 +182,7 @@ impl Game {
                             i += 1;
                         } else {
                             self.items.remove(i);
+                            pickups.push(Nourishment(NOURISH_TIMER));
                         }
                     },
                     _ => i += 1,
