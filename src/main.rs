@@ -447,31 +447,35 @@ void main() {
 
             // inv
             for (i, &flav) in game.items.iter().enumerate() {
-                let x = i as i64 % 4 + 8;
-                let y = i as i64 / 4 - 7;
+                let x = (i as i64 % 4 + 8) as f32;
+                let y = (i as i64 / 4 - 7) as f32;
                 use game::Item::*;
-                let (color, size) = match flav {
-                    Hunger(i) => (
+                match flav {
+                    Hunger(i) => circle_vertices(
+                        x, y,
+                        0.3 * i as f32 / game::HUNGER_TIMER as f32,
                         HUNGER_C,
-                        i as f32 / game::HUNGER_TIMER as f32
+                        |v| vs.push(v),
                     ),
-                    Nourishment(i) => (
+                    Nourishment(i) => circle_vertices(
+                        x, y,
+                        0.3 * i as f32 / game::NOURISH_TIMER as f32,
                         NOURISH_C,
-                        i as f32 / game::NOURISH_TIMER as f32
+                        |v| vs.push(v),
                     ),
-                    Health(i) => (
+                    Health(i) => circle_vertices(
+                        x, y,
+                        0.3 * i as f32 / game::HEALTH_TIMER as f32,
                         HEALTH_C,
-                        i as f32 / game::HEALTH_TIMER as f32
+                        |v| vs.push(v),
                     ),
-                    Damage => (DAMAGE_C, 1.0),
-                };
-                circle_vertices(
-                    x as f32,
-                    y as f32,
-                    0.3 * size,
-                    color,
-                    |v| vs.push(v),
-                );
+                    Damage => square_vertices(
+                        x, y,
+                        0.35,
+                        DAMAGE_C,
+                        |v| vs.push(v),
+                    ),
+                }
             }
 
             vertex_buffer_pool
