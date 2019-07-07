@@ -358,8 +358,8 @@ void main() {
             // background
             let mut max = 10;
             for i in 0..3 {
-                if max < game.counts[i] {
-                    max = game.counts[i];
+                if max < game.max_counts[i] {
+                    max = game.max_counts[i];
                 }
             }
             let mut heights = [
@@ -388,6 +388,20 @@ void main() {
             }
 
             // water lines
+            let line_cols = [HUNGER_C, NOURISH_C, HEALTH_C];
+            for (i, &color) in line_cols.iter().enumerate() {
+                let height = game.max_counts[i] as f32 / max as f32;
+                let pos = SCREEN_BOTTOM_EDGE - height * SCREEN_HEIGHT;
+                rectangle_vertices(
+                    SCREEN_LEFT_EDGE,
+                    pos - 0.04,
+                    SCREEN_RIGHT_EDGE,
+                    pos + 0.04,
+                    color,
+                    |v| vs.push(v),
+                );
+            }
+
 
             // grid squares
             for i in -7..8 {
