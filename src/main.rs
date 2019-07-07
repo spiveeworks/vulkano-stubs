@@ -428,27 +428,35 @@ void main() {
             }
 
             // pickups
-            for &([x, y], disp, flav) in &game.world {
-                use game::PickupFlavor::*;
-                let color = match flav {
-                    Hunger => HUNGER_C,
-                    Nourishment => NOURISH_C,
-                };
-                use game::Displacement;
-                let [dx, dy] = match disp {
-                    Displacement::TL => [-0.2, -0.2],
-                    Displacement::TR => [ 0.2, -0.2],
-                    Displacement::M  => [ 0.0,  0.0],
-                    Displacement::BL => [-0.2,  0.2],
-                    Displacement::BR => [ 0.2,  0.2],
-                };
-                circle_vertices(
-                    x as f32 + dx,
-                    y as f32 + dy,
-                    0.1,
-                    color,
-                    |v| vs.push(v),
-                );
+            for x in 0..15 {
+                for y in 0..15 {
+                    for disp in 0..5 {
+                        let spot = game.world[x][y][disp];
+                        if spot.is_none() {
+                            continue;
+                        }
+                        use game::PickupFlavor::*;
+                        let color = match spot.unwrap() {
+                            Hunger => HUNGER_C,
+                            Nourishment => NOURISH_C,
+                        };
+                        let [dx, dy] = match disp {
+                            0 => [-0.2, -0.2],
+                            1 => [ 0.2, -0.2],
+                            2  => [ 0.0,  0.0],
+                            3 => [-0.2,  0.2],
+                            4 => [ 0.2,  0.2],
+                            _ => unreachable!(),
+                        };
+                        circle_vertices(
+                            x as f32 - 7.0 + dx,
+                            y as f32 - 7.0 + dy,
+                            0.1,
+                            color,
+                            |v| vs.push(v),
+                        );
+                    }
+                }
             }
 
             // player

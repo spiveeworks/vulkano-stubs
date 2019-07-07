@@ -30,19 +30,9 @@ impl PickupFlavor {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum Displacement {
-    TL,
-    TR,
-    M,
-    BL,
-    BR,
-}
-
 const NUM_FLAVORS: u8 = PickupFlavor::Nourishment as u8 + 1;
 
-// @Readability struct Pickup;?
-pub type World = Vec<([i8; 2], Displacement, PickupFlavor)>;
+pub type World = Box<[[[Option<PickupFlavor>; 5]; 15]; 15]>;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Dir {
@@ -97,36 +87,27 @@ impl Game {
         self.pos = wrap_pos([self.pos[0] + dx, self.pos[1] + dy]);
         {
             use rand::Rng;
-            let new_x = self.rng.gen_range(-7, 8);
-            let new_y = self.rng.gen_range(-7, 8);
+            let new_x = self.rng.gen_range(0, 15);
+            let new_y = self.rng.gen_range(0, 15);
             let flav = match self.rng.gen_range(0, NUM_FLAVORS) {
                 0 => PickupFlavor::Hunger,
                 1 => PickupFlavor::Nourishment,
                 _ => unreachable!(),
             };
-            let disp = match self.rng.gen_range(0, 5) {
-                0 => Displacement::TL,
-                1 => Displacement::TR,
-                2 => Displacement::M,
-                3 => Displacement::BL,
-                4 => Displacement::BR,
-                _ => unreachable!(),
-            };
-            self.world.push(([new_x, new_y], disp, flav));
+            let disp = self.rng.gen_range(0, 5);
+            self.world[new_x][new_y][disp] = Some(flav);
         }
 
         let mut pickups = Vec::new();
         {
-            let mut i = 0;
-            while i < self.world.len() {
-                let (pos, _, flav) = self.world[i];
-                if pos == self.pos {
+            let [x, y] = self.pos;
+            let ground = &mut self.world[(x + 7) as usize][(y + 7) as usize];
+            for i in 0..5 {
+                if let Some(flav) = ground[i] {
                     pickups.push(flav.pickup());
-                    self.world.remove(i);
-                } else {
-                    i += 1;
                 }
             }
+            *ground = [None; 5];
         }
 
         fn react_pickups(game: &mut Game, mut pickups: Vec<Item>) {
@@ -206,8 +187,14 @@ impl Game {
 
         self.counts = [0; 4];
 
-        for &(_, _, pickup) in &self.world {
-            self.counts[pickup as usize] += 1;
+        for x in 0..15 {
+            for y in 0..15 {
+                for disp in 0..5 {
+                    if let Some(flav) = self.world[x][y][disp] {
+                        self.counts[flav as usize] += 1;
+                    }
+                }
+            }
         }
         for &item in &self.items {
             use self::Item::*;
