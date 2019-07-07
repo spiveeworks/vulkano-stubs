@@ -154,6 +154,25 @@ fn main() {
         }
     }
 
+    fn rectangle_vertices<F: FnMut(Vertex)>(
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        color: [f32; 3],
+        mut f: F
+    ) {
+        // inconsistent winding order who cares
+        triangle_vertices([[x1, y1], [x2, y1], [x1, y2]], color, |v| f(v));
+        triangle_vertices([[x1, y2], [x2, y2], [x2, y1]], color, |v| f(v));
+    }
+
+    const SCREEN_TOP_EDGE: f32 = -10.0;
+    const SCREEN_BOTTOM_EDGE: f32 = 10.0;
+    const SCREEN_LEFT_EDGE: f32 = -8.0;
+    const SCREEN_RIGHT_EDGE: f32 = 12.0;
+    const SCREEN_HEIGHT: f32 = SCREEN_BOTTOM_EDGE - SCREEN_TOP_EDGE;
+
     mod vs {
         vulkano_shaders::shader!{
             ty: "vertex",
@@ -323,28 +342,73 @@ void main() {
         /////////////////
         // draw things
 
-        // color to clear screen with
-        let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
+        let clear_values = vec!([0.7, 0.7, 0.7, 1.0].into());
+
         let vertex_buffer = {
+            // colours
+            const HUNGER_C: [f32; 3] = [0.5, 0.2, 0.0];
+            const NOURISH_C: [f32; 3] = [0.0, 0.0, 0.4];
+            const HEALTH_C: [f32; 3] = [1.0, 0.0, 0.0];
+            const DAMAGE_C: [f32; 3] = [0.2, 0.0, 0.0];
+            const PLAYER_C: [f32; 3] = HEALTH_C;
+
             // @Performance ideally we would reuse between frames
             let mut vs = Vec::with_capacity(6 * 400);
+
+            // background
+            let mut max = 10;
+            for i in 0..3 {
+                if max < game.counts[i] {
+                    max = game.counts[i];
+                }
+            }
+            let mut heights = [
+                (0.0, HUNGER_C),
+                (0.0, NOURISH_C),
+                (0.0, HEALTH_C),
+                (0.0, DAMAGE_C),
+            ];
+            for i in 0..3 {
+                heights[i].0 = game.counts[i] as f32 / max as f32;
+            }
+            heights[3].0 = game.counts[3] as f32 / game::INV_CAP as f32;
+            // descending order
+            heights[0..3].sort_by(|&(l, _), &(r, _)|
+                std::cmp::PartialOrd::partial_cmp(&r, &l).unwrap()
+            );
+            for &(height, color) in &heights {
+                rectangle_vertices(
+                    SCREEN_LEFT_EDGE,
+                    SCREEN_BOTTOM_EDGE - height * SCREEN_HEIGHT,
+                    SCREEN_RIGHT_EDGE,
+                    SCREEN_BOTTOM_EDGE,
+                    color,
+                    |v| vs.push(v),
+                );
+            }
+
+
+            // water lines
+
+            // grid squares
             for i in -7..8 {
                 for j in -7..8 {
                     square_vertices(
                         i as f32,
                         j as f32,
                         0.4,
-                        [0.4, 0.4, 0.4],
+                        [0.6, 0.6, 0.6],
                         |v| vs.push(v),
                     );
                 }
             }
 
+            // pickups
             for &([x, y], disp, flav) in &game.world {
                 use game::PickupFlavor::*;
                 let color = match flav {
-                    Hunger => [0.5, 0.2, 0.0],
-                    Nourishment => [0.0, 0.0, 0.4],
+                    Hunger => HUNGER_C,
+                    Nourishment => NOURISH_C,
                 };
                 use game::Displacement;
                 let [dx, dy] = match disp {
@@ -363,32 +427,34 @@ void main() {
                 );
             }
 
+            // player
             circle_vertices(
                 game.pos[0] as f32,
                 game.pos[1] as f32,
                 0.3,
-                [1.0, 0.0, 0.0],
+                PLAYER_C,
                 |v| vs.push(v),
             );
 
+            // inv
             for (i, &flav) in game.items.iter().enumerate() {
                 let x = i as i64 % 4 + 8;
                 let y = i as i64 / 4 - 7;
                 use game::Item::*;
                 let (color, size) = match flav {
                     Hunger(i) => (
-                        [0.5, 0.2, 0.0],
+                        HUNGER_C,
                         i as f32 / game::HUNGER_TIMER as f32
                     ),
                     Nourishment(i) => (
-                        [0.0, 0.0, 0.4],
+                        NOURISH_C,
                         i as f32 / game::NOURISH_TIMER as f32
                     ),
                     Health(i) => (
-                        [1.0, 0.0, 0.0],
+                        HEALTH_C,
                         i as f32 / game::HEALTH_TIMER as f32
                     ),
-                    Damage => ([0.2, 0.0, 0.0], 1.0),
+                    Damage => (DAMAGE_C, 1.0),
                 };
                 circle_vertices(
                     x as f32,
@@ -490,7 +556,7 @@ void main() {
                         S | Down => inputs.push(game::Dir::Down),
                         A | Left => inputs.push(game::Dir::Left),
                         D | Right => inputs.push(game::Dir::Right),
-                        R => game = Default::default(),
+                        R => game.reset(),
                         _ => (),
                     }
                 }

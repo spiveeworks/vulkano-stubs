@@ -18,6 +18,8 @@ pub const HUNGER_TIMER: u8 = 10;
 pub const NOURISH_TIMER: u8 = 5;
 pub const HEALTH_TIMER: u8 = 20;
 
+pub const INV_CAP: usize = 4 * 15;
+
 impl PickupFlavor {
     pub fn pickup(self: Self) -> Item {
         use self::PickupFlavor::*;
@@ -76,9 +78,17 @@ pub struct Game {
     rng: Rng,
     pub world: World,
     pub items: Vec<Item>,
+    pub counts: [i32; 4],      // could be i8 but whatever
+    pub max_counts: [i32; 3],  // could be i8 but whatever
 }
 
 impl Game {
+    pub fn reset(self: &mut Self) {
+        let max_counts = self.max_counts;
+        *self = Default::default();
+        self.max_counts = max_counts;
+    }
+
     pub fn update(
         self: &mut Game,
         input: Dir,
@@ -191,6 +201,30 @@ impl Game {
         }
 
         react_pickups(self, pickups);
+
+        // count everything
+
+        self.counts = [0; 4];
+
+        for &(_, _, pickup) in &self.world {
+            self.counts[pickup as usize] += 1;
+        }
+        for &item in &self.items {
+            use self::Item::*;
+            let i = match item {
+                Hunger(_) => 0,
+                Nourishment(_) => 1,
+                Health(_) => 2,
+                Damage => 3,
+            };
+            self.counts[i] += 1;
+        }
+
+        for i in 0..3 {
+            if self.max_counts[i] < self.counts[i] {
+                self.max_counts[i] = self.counts[i];
+            }
+        }
     }
 }
 
