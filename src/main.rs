@@ -387,7 +387,6 @@ void main() {
                 );
             }
 
-
             // water lines
 
             // grid squares
@@ -433,6 +432,16 @@ void main() {
                 game.pos[1] as f32,
                 0.3,
                 PLAYER_C,
+                |v| vs.push(v),
+            );
+
+            // inv background
+            rectangle_vertices(
+                7.6,
+                -7.4,
+                11.4,
+                7.4,
+                [0.6, 0.6, 0.6],
                 |v| vs.push(v),
             );
 
