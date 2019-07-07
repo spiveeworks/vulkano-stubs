@@ -167,11 +167,11 @@ fn main() {
         triangle_vertices([[x1, y2], [x2, y2], [x2, y1]], color, |v| f(v));
     }
 
-    const SCREEN_TOP_EDGE: f32 = -10.0;
-    const SCREEN_BOTTOM_EDGE: f32 = 10.0;
-    const SCREEN_LEFT_EDGE: f32 = -8.0;
-    const SCREEN_RIGHT_EDGE: f32 = 12.0;
-    const SCREEN_HEIGHT: f32 = SCREEN_BOTTOM_EDGE - SCREEN_TOP_EDGE;
+    const    SCREEN_TOP_EDGE: f32 = -8.0;
+    const SCREEN_BOTTOM_EDGE: f32 =  8.0;
+    const   SCREEN_LEFT_EDGE: f32 = -8.0;
+    const  SCREEN_RIGHT_EDGE: f32 = 12.0;
+    const      SCREEN_HEIGHT: f32 = SCREEN_BOTTOM_EDGE - SCREEN_TOP_EDGE;
 
     mod vs {
         vulkano_shaders::shader!{
@@ -342,7 +342,7 @@ void main() {
         /////////////////
         // draw things
 
-        let clear_values = vec!([0.7, 0.7, 0.7, 1.0].into());
+        let clear_values = vec!([0.0, 0.0, 0.0, 1.0].into());
 
         let vertex_buffer = {
             // colours
@@ -354,6 +354,16 @@ void main() {
 
             // @Performance ideally we would reuse between frames
             let mut vs = Vec::with_capacity(6 * 400);
+
+            // game area
+            rectangle_vertices(
+                SCREEN_LEFT_EDGE,
+                SCREEN_TOP_EDGE,
+                SCREEN_RIGHT_EDGE,
+                SCREEN_BOTTOM_EDGE,
+                [0.7, 0.7, 0.7],
+                |v| vs.push(v),
+            );
 
             // background
             let mut max = 10;
