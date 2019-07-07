@@ -375,10 +375,9 @@ void main() {
             heights[1].0 /= max as f32;
             heights[2].0 /= game::INV_CAP as f32;
             heights[3].0 /= game::INV_CAP as f32;
-            // descending order
-            heights[0..3].sort_by(|&(l, _), &(r, _)|
-                std::cmp::PartialOrd::partial_cmp(&r, &l).unwrap()
-            );
+            // heights happens to be sorted in reverse priority order
+            // 0 and 1 mix, 2 and 3 mix,
+            // 2/3 need to be drawn over the top of 1/2
             for &(height, color) in &heights {
                 rectangle_vertices(
                     SCREEN_LEFT_EDGE,
