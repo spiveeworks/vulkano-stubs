@@ -1,5 +1,5 @@
 [package]
-name = "resource-game"
+name = "circle-enigma"
 version = "0.1.0"
 authors = ["Jarvis Carroll <spiveehere@gmail.com>"]
 publish = false
