@@ -219,6 +219,9 @@ impl Game {
             };
             self.counts[i] += 1;
         }
+        let insig = std::cmp::min(self.counts[0], self.counts[1]);
+        self.counts[0] -= insig;
+        self.counts[1] -= insig;
 
         for i in 0..3 {
             if self.max_counts[i] < self.counts[i] {
