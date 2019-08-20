@@ -102,6 +102,7 @@ fn main() {
 
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
 
+    /*
     fn cube_vertices<F: FnMut(Vertex)>(x: f32, y: f32, z: f32, mut f: F) {
         f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
         f(Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] });
@@ -124,28 +125,77 @@ fn main() {
         f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
         f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
     }
+    */
 
-    let mut cube_pos = vec![
-        [0.0, 0.0, 0.0],
-        [-1.0, 0.0, 0.0],
-        [-2.0, 0.0, 0.0],
-        [0.0, -1.0, 0.0],
-        [0.0, -2.0, 0.0],
-        [0.0, 0.0, 1.0],
-        [0.0, 0.0, 2.0],
-    ];
-    for i in -10..=10 {
-        for j in -10..=10 {
-            cube_pos.push([i as f32, j as f32, -1.0]);
+    let mut tri_heights_1 = [[0u16; 16]; 16];
+    let mut tri_heights_2 = [[0u16; 16]; 16];
+    for i in 0..16 {
+        for j in 0..16 {
+            tri_heights_1[i as usize][j as usize] = (i%2 + j%2) * 20;
+            tri_heights_2[i as usize][j as usize] = (i%2 + j%2 + 1) * 20;
         }
     }
-    // this will sort primarily by z
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_x2, _x1).unwrap());
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_y2, _y1).unwrap());
-    cube_pos.sort_by(|[_x1, _y1, _z1], [_x2, _y2, _z2]|
-        PartialOrd::partial_cmp(_z1, _z2).unwrap());
+    let mut vert_heights = [[0u16; 16]; 16];
+    for i in 1..15 {
+        for j in 1..15 {
+            let mut height = 0;
+
+            // below centre
+            height += tri_heights_1[i][j];
+            // below right
+            height += tri_heights_2[i+1][j-1];
+            // above right
+            height += tri_heights_1[i][j+1];
+            // above centre
+            height += tri_heights_2[i][j];
+            // above left
+            height += tri_heights_1[i-1][j+1];
+            // below left
+            height += tri_heights_2[i][j-1];
+
+            height /= 6;
+            vert_heights[i][j] = height;
+        }
+    }
+
+    fn draw_tri<F: FnMut(Vertex)>(
+        indeces: [[usize; 2]; 3],
+        vert_heights: &[[u16; 16]; 16],
+        mut out: F,
+    ) {
+        let mut max = u16::min_value();
+        let mut min = u16::max_value();
+        let mut coords = [[0; 3]; 3];
+        for n in 0..3 {
+            let [i, j] = indeces[n];
+            let h = vert_heights[i][j];
+            max = std::cmp::max(max, h);
+            min = std::cmp::min(min, h);
+            coords[n] = [i as u16 * 20, j as u16 * 20, h];
+        }
+        let col = 1.0 - (max - min) as f32 / 60.0;
+        for n in 0..3 {
+            let [x, y, h] = coords[n];
+            let x = x as f32 / 20.0;
+            let y = y as f32 / 20.0 - x / 2.0;
+            let z = h as f32 / 20.0;
+            out(Vertex { position: [x-8.0, y-8.0, z], color: [col, col, col] });
+        }
+    }
+    fn draw_tri_1<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
+        draw_tri(
+            [[i, j],[i, j-1],[i+1,j-1]],
+            vert_heights,
+            out,
+        );
+    }
+    fn draw_tri_2<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
+        draw_tri(
+            [[i, j],[i, j+1],[i-1,j+1]],
+            vert_heights,
+            out,
+        );
+    }
 
     mod vs {
         vulkano_shaders::shader!{
@@ -315,23 +365,19 @@ void main() {
         let clear_values = vec!([0.0, 0.0, 1.0, 1.0].into());
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
-            let mut cube_vs = Vec::with_capacity(18 * cube_pos.len());
-            let mut char_drawn = false;
-            let [char_x, char_y, char_z] = char_pos;
-            for &[x, y, z] in &cube_pos {
-                // draw the character as soon as boxes start being "completely" behind it
-                if !char_drawn && z >= char_z && y <= char_y && x <= char_x {
-                    cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
-                    char_drawn = true;
+            let mut world_vs = Vec::with_capacity(15 * 15 * 2);
+            for i in (0..15).rev() {
+                for j in (0..15).rev() {
+                    draw_tri_1(i, j+1, &vert_heights, |v| world_vs.push(v));
+                    draw_tri_2(i+1, j, &vert_heights, |v| world_vs.push(v));
                 }
-                cube_vertices(x, y, z, |v| cube_vs.push(v));
             }
-            if !char_drawn {
-                cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
-            }
+            //if !char_drawn {
+            //    cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
+            //}
 
             vertex_buffer_pool
-                .chunk(cube_vs.into_iter())
+                .chunk(world_vs.into_iter())
                 .unwrap()
         };
 
