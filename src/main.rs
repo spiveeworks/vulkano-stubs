@@ -131,8 +131,9 @@ fn main() {
     let mut tri_heights_2 = [[0u16; 16]; 16];
     for i in 0..16 {
         for j in 0..16 {
-            tri_heights_1[i as usize][j as usize] = (i%2 + j%2) * 20;
-            tri_heights_2[i as usize][j as usize] = (i%2 + j%2 + 1) * 20;
+            let x = 128 - (i - 8) * (i - 8) - (j - 8) * (j - 8);
+            tri_heights_1[i as usize][j as usize] = x as u16;
+            tri_heights_2[i as usize][j as usize] = x as u16
         }
     }
     let mut vert_heights = [[0u16; 16]; 16];
@@ -140,18 +141,18 @@ fn main() {
         for j in 1..15 {
             let mut height = 0;
 
-            // below centre
-            height += tri_heights_1[i][j];
-            // below right
-            height += tri_heights_2[i+1][j-1];
             // above right
-            height += tri_heights_1[i][j+1];
+            height += tri_heights_1[i][j];
             // above centre
-            height += tri_heights_2[i][j];
+            height += tri_heights_2[i-1][j+1];
             // above left
-            height += tri_heights_1[i-1][j+1];
+            height += tri_heights_1[i-1][j];
             // below left
-            height += tri_heights_2[i][j-1];
+            height += tri_heights_2[i-1][j];
+            // below centre
+            height += tri_heights_1[i][j-1];
+            // below right
+            height += tri_heights_2[i][j];
 
             height /= 6;
             vert_heights[i][j] = height;
@@ -163,35 +164,32 @@ fn main() {
         vert_heights: &[[u16; 16]; 16],
         mut out: F,
     ) {
-        let mut max = u16::min_value();
-        let mut min = u16::max_value();
         let mut coords = [[0; 3]; 3];
+        let mut color = [0.0; 3];
         for n in 0..3 {
             let [i, j] = indeces[n];
             let h = vert_heights[i][j];
-            max = std::cmp::max(max, h);
-            min = std::cmp::min(min, h);
             coords[n] = [i as u16 * 20, j as u16 * 20, h];
+            color[n] = h as f32 / 200.0;
         }
-        let col = 1.0 - (max - min) as f32 / 60.0;
         for n in 0..3 {
             let [x, y, h] = coords[n];
             let x = x as f32 / 20.0;
             let y = y as f32 / 20.0 - x / 2.0;
             let z = h as f32 / 20.0;
-            out(Vertex { position: [x-8.0, y-8.0, z], color: [col, col, col] });
+            out(Vertex { position: [x-8.0, y-8.0, z], color });
         }
     }
     fn draw_tri_1<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
         draw_tri(
-            [[i, j],[i, j-1],[i+1,j-1]],
+            [[i, j],[i+1, j],[i,j+1]],
             vert_heights,
             out,
         );
     }
     fn draw_tri_2<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
         draw_tri(
-            [[i, j],[i, j+1],[i-1,j+1]],
+            [[i, j],[i+1, j],[i+1,j-1]],
             vert_heights,
             out,
         );
@@ -368,8 +366,8 @@ void main() {
             let mut world_vs = Vec::with_capacity(15 * 15 * 2);
             for i in (0..15).rev() {
                 for j in (0..15).rev() {
-                    draw_tri_1(i, j+1, &vert_heights, |v| world_vs.push(v));
-                    draw_tri_2(i+1, j, &vert_heights, |v| world_vs.push(v));
+                    draw_tri_2(i, j+1, &vert_heights, |v| world_vs.push(v));
+                    draw_tri_1(i, j, &vert_heights, |v| world_vs.push(v));
                 }
             }
             //if !char_drawn {
