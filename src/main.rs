@@ -448,63 +448,24 @@ void main() {
         {
             let x = player_pos[0] + player_vel[0];
             let y = player_pos[1] + player_vel[1];
-            let cx = (x + 10) / 20;
-            let cy = (y + 10) / 20;
-            let dx = x - cx * 20;
-            let dy = y - cy * 20;
+            let cx = x / 20;
+            let cy = y / 20;
+            let dx = (x % 20) as i32;
+            let dy = (y % 20) as i32;
             let i = cx as usize;
             let j = cy as usize;
-            let z;
-            // @Performance @Everything should we just lerp everything?
-            // like a barymetric square instead of a barymetric triangle
-            if dy < dx {
-                if dy < -dx {
-                    // between [-10, -10] and [10, -10]
-                    // in bary we want (1, 0) to give [-10, -10]
-                    // so convert _to_ bary using [[-10, 10], [-10, -10]]^-1
-                    // i.e. 1/200[[-10, -10], [10, -10]]
-                    // use scale = 20
-                    let b1 = - dx - dy;
-                    let b2 =   dx - dy;
-                    let b0 = 20 - b1 - b2;
-                    let h0 = centre_heights[i][j];
-                    let h1 = corner_heights[i][j];
-                    let h2 = corner_heights[i+1][j];
-                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
-                } else {
-                    // [[10, 10], [-10, 10]]^-1
-                    // 1/20[[1, -1], [1, 1]]
-                    let b1 = dx - dy;
-                    let b2 = dx + dy;
-                    let b0 = 20 - b1 - b2;
-                    let h0 = centre_heights[i][j];
-                    let h1 = corner_heights[i+1][j];
-                    let h2 = corner_heights[i+1][j+1];
-                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
-                }
-            } else {
-                if dy < -dx {
-                    // [[-10, -10], [10, -10]]^-1
-                    // i.e. 1/20[[-1, 1], [-1, -1]]
-                    let b1 = - dx + dy;
-                    let b2 = - dx - dy;
-                    let b0 = 20 - b1 - b2;
-                    let h0 = centre_heights[i][j];
-                    let h1 = corner_heights[i][j+1];
-                    let h2 = corner_heights[i][j];
-                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
-                } else {
-                    // [[10, -10], [10, 10]]^-1
-                    // 1/20[[1, 1], [-1, 1]]
-                    let b1 =   dx + dy;
-                    let b2 = - dx + dy;
-                    let b0 = 20 - b1 - b2;
-                    let h0 = centre_heights[i][j];
-                    let h1 = corner_heights[i+1][j+1];
-                    let h2 = corner_heights[i][j+1];
-                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
-                }
-            }
+
+            let z00 = centre_heights[i][j] as i32;
+            let z10 = centre_heights[i+1][j] as i32;
+            let z01 = centre_heights[i][j+1] as i32;
+            let z11 = centre_heights[i+1][j+1] as i32;
+            let mut z = 0;
+            z += z00 * (20 - dx) * (20 - dy);
+            z += z10 * dx * (20 - dy);
+            z += z01 * (20 - dx) * dy;
+            z += z11 * dx * dy;
+            let z = (z / 400) as i16;
+
             player_pos = [x, y, z];
         }
     }
