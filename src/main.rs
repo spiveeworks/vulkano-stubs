@@ -23,6 +23,8 @@ use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
 
+mod data;
+
 fn main() {
     let instance = {
         let extensions = vulkano_win::required_extensions();
