@@ -98,8 +98,14 @@ fn main() {
 
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
 
-    /*
-    fn cube_vertices<F: FnMut(Vertex)>(x: f32, y: f32, z: f32, mut f: F) {
+    let mut player_pos = [0i16; 3];
+    let mut player_vel = [0i16; 2];
+
+    fn draw_cube<F: FnMut(Vertex)>(pos: [i16; 3], mut f: F) {
+        let x = pos[0] as f32 / 20.0 - 8.0;
+        let y = pos[1] as f32 / 20.0 - 8.0;
+        let z = pos[2] as f32 / 20.0;
+
         f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
         f(Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] });
         f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
@@ -121,7 +127,6 @@ fn main() {
         f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
         f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
     }
-    */
 
     let mut centre_heights = [[0u16; 16]; 16];
     for i in 0..16 {
@@ -331,10 +336,10 @@ void main() {
                 for j in (0..16).rev() {
                     draw_tris(i, j, centre_heights[i][j], &corner_heights, &mut |v| world_vs.push(v));
                 }
+                if (player_pos[0] + 10) / 20 == i as i16 {
+                    draw_cube(player_pos, |v| world_vs.push(v));
+                }
             }
-            //if !char_drawn {
-            //    cube_vertices(char_x, char_y, char_z, |v| cube_vs.push(v));
-            //}
 
             vertex_buffer_pool
                 .chunk(world_vs.into_iter())
@@ -403,20 +408,59 @@ void main() {
         // it.
         let mut done = false;
         events_loop.poll_events(|ev| {
-            use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCode, };
-            // use winit::ElementState;
+            use winit::{Event, WindowEvent, DeviceEvent, KeyboardInput, VirtualKeyCode, ElementState };
             match ev {
                 Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => done = true,
                 Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
-                Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), /*state,*/ .. }), .. } => {
-                    if let VirtualKeyCode::Escape = key {
-                        done = true;
+                Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), state, .. }), .. } => {
+                    let mut new_vel = None;
+                    match key {
+                        VirtualKeyCode::Escape => {
+                            done = true;
+                        },
+                        VirtualKeyCode::W => {
+                            new_vel = Some([0, 1]);
+                        },
+                        VirtualKeyCode::A => {
+                            new_vel = Some([-1, 0]);
+                        },
+                        VirtualKeyCode::S => {
+                            new_vel = Some([0, -1]);
+                        },
+                        VirtualKeyCode::D => {
+                            new_vel = Some([1, 0]);
+                        },
+                        _ => (),
+                    }
+                    if new_vel.is_some() {
+                        if state == ElementState::Pressed {
+                            player_vel = new_vel.unwrap();
+                        } else {
+                            player_vel = [0, 0];
+                        }
                     }
                 }
                 _ => ()
             }
         });
         if done { return; }
+
+        {
+            let x = player_pos[0] + player_vel[0];
+            let y = player_pos[1] + player_vel[1];
+            let cx = (x + 10) / 20;
+            let cy = (y + 10) / 20;
+            /*
+            let dx = x - cx * 20;
+            let dy = y - cy * 20;
+            if dx > dy {
+                if dx > -dy {
+                }
+            }
+            */
+            let z = centre_heights[cx as usize][cy as usize];
+            player_pos = [x, y, z as i16]; // TODO heights should be signed...
+        }
     }
 }
 
