@@ -123,72 +123,62 @@ fn main() {
     }
     */
 
-    let mut tri_heights_1 = [[0u16; 16]; 16];
-    let mut tri_heights_2 = [[0u16; 16]; 16];
+    let mut centre_heights = [[0u16; 16]; 16];
     for i in 0..16 {
         for j in 0..16 {
             let x = 128 - (i - 8) * (i - 8) - (j - 8) * (j - 8);
-            tri_heights_1[i as usize][j as usize] = x as u16;
-            tri_heights_2[i as usize][j as usize] = x as u16
+            centre_heights[i as usize][j as usize] = x as u16;
         }
     }
-    let mut vert_heights = [[0u16; 16]; 16];
-    for i in 1..15 {
-        for j in 1..15 {
+    let mut corner_heights = [[0u16; 17]; 17];
+    for i in 0..15 {
+        for j in 0..15 {
             let mut height = 0;
 
-            // above right
-            height += tri_heights_1[i][j];
-            // above centre
-            height += tri_heights_2[i-1][j+1];
-            // above left
-            height += tri_heights_1[i-1][j];
-            // below left
-            height += tri_heights_2[i-1][j];
-            // below centre
-            height += tri_heights_1[i][j-1];
-            // below right
-            height += tri_heights_2[i][j];
+            for k in 0..4 {
+                height += centre_heights[i+k%2][j+k/2];
+            }
 
-            height /= 6;
-            vert_heights[i][j] = height;
+            height /= 4;
+            corner_heights[i+1][j+1] = height;
         }
     }
 
     fn draw_tri<F: FnMut(Vertex)>(
         indeces: [[usize; 2]; 3],
-        vert_heights: &[[u16; 16]; 16],
-        mut out: F,
+        centre_height: u16,
+        vert_heights: &[[u16; 17]; 17],
+        out: &mut F,
     ) {
-        let mut coords = [[0; 3]; 3];
+        let mut coords = [(0, 0, 0); 3];
         let mut color = [0.0; 3];
         for n in 0..3 {
             let [i, j] = indeces[n];
-            let h = vert_heights[i][j];
-            coords[n] = [i as u16 * 20, j as u16 * 20, h];
+            let h = if n == 0 { centre_height } else { vert_heights[i][j] };
+            let offset = if n == 0 { 0 } else { -10 };
+            coords[n] = (offset + i as i16 * 20, offset + j as i16 * 20, h);
             color[n] = h as f32 / 200.0;
         }
         for n in 0..3 {
-            let [x, y, h] = coords[n];
+            let (x, y, h) = coords[n];
             let x = x as f32 / 20.0;
-            let y = y as f32 / 20.0 - x / 2.0;
+            let y = y as f32 / 20.0;
             let z = h as f32 / 20.0;
             out(Vertex { position: [x-8.0, y-8.0, z], color });
         }
     }
-    fn draw_tri_1<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
-        draw_tri(
-            [[i, j],[i+1, j],[i,j+1]],
-            vert_heights,
-            out,
-        );
-    }
-    fn draw_tri_2<F: FnMut(Vertex)>(i: usize, j: usize, vert_heights: &[[u16; 16]; 16], out: F) {
-        draw_tri(
-            [[i, j],[i+1, j],[i+1,j-1]],
-            vert_heights,
-            out,
-        );
+    fn draw_tris<F: FnMut(Vertex)>(i: usize, j: usize, centre_height: u16, vert_heights: &[[u16; 17]; 17], out: &mut F) {
+        const CCW: [usize; 4] = [1, 3, 2, 0]; // counter clockwise
+        for c in 0..4 {                       // starting with top right tri
+            let c1 = CCW[c];
+            let c2 = CCW[(c+1)%4];
+            draw_tri(
+                [[i, j], [i+c1%2, j+c1/2],[i+c2%2,j+c2/2]],
+                centre_height,
+                vert_heights,
+                out,
+            );
+        }
     }
 
     mod vs {
@@ -337,10 +327,9 @@ void main() {
         let vertex_buffer = {
             // @Performance ideally we would reuse between frames
             let mut world_vs = Vec::with_capacity(15 * 15 * 2);
-            for i in (0..15).rev() {
-                for j in (0..15).rev() {
-                    draw_tri_2(i, j+1, &vert_heights, |v| world_vs.push(v));
-                    draw_tri_1(i, j, &vert_heights, |v| world_vs.push(v));
+            for i in (0..16).rev() {
+                for j in (0..16).rev() {
+                    draw_tris(i, j, centre_heights[i][j], &corner_heights, &mut |v| world_vs.push(v));
                 }
             }
             //if !char_drawn {
