@@ -106,36 +106,36 @@ fn main() {
         let y = pos[1] as f32 / 20.0 - 8.0;
         let z = pos[2] as f32 / 20.0;
 
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y+0.1, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.6, 0.6, 0.6] });
 
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.5, y-0.5, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
 
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.5, y+0.5, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.5, y-0.5, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
     }
 
-    let mut centre_heights = [[0u16; 16]; 16];
+    let mut centre_heights = [[0i16; 16]; 16];
     for i in 0..16 {
         for j in 0..16 {
             let x = 128 - (i - 8) * (i - 8) - (j - 8) * (j - 8);
-            centre_heights[i as usize][j as usize] = x as u16;
+            centre_heights[i as usize][j as usize] = x as i16;
         }
     }
-    let mut corner_heights = [[0u16; 17]; 17];
+    let mut corner_heights = [[0i16; 17]; 17];
     for i in 0..15 {
         for j in 0..15 {
             let mut height = 0;
@@ -151,8 +151,8 @@ fn main() {
 
     fn draw_tri<F: FnMut(Vertex)>(
         indeces: [[usize; 2]; 3],
-        centre_height: u16,
-        vert_heights: &[[u16; 17]; 17],
+        centre_height: i16,
+        vert_heights: &[[i16; 17]; 17],
         out: &mut F,
     ) {
         let mut coords = [(0, 0, 0); 3];
@@ -172,7 +172,7 @@ fn main() {
             out(Vertex { position: [x-8.0, y-8.0, z], color });
         }
     }
-    fn draw_tris<F: FnMut(Vertex)>(i: usize, j: usize, centre_height: u16, vert_heights: &[[u16; 17]; 17], out: &mut F) {
+    fn draw_tris<F: FnMut(Vertex)>(i: usize, j: usize, centre_height: i16, vert_heights: &[[i16; 17]; 17], out: &mut F) {
         const CCW: [usize; 4] = [1, 3, 2, 0]; // counter clockwise
         for c in 0..4 {                       // starting with top right tri
             let c1 = CCW[c];
@@ -450,16 +450,62 @@ void main() {
             let y = player_pos[1] + player_vel[1];
             let cx = (x + 10) / 20;
             let cy = (y + 10) / 20;
-            /*
             let dx = x - cx * 20;
             let dy = y - cy * 20;
-            if dx > dy {
-                if dx > -dy {
+            let i = cx as usize;
+            let j = cy as usize;
+            let z;
+            // @Performance @Everything should we just lerp everything?
+            // like a barymetric square instead of a barymetric triangle
+            if dy < dx {
+                if dy < -dx {
+                    // between [-10, -10] and [10, -10]
+                    // in bary we want (1, 0) to give [-10, -10]
+                    // so convert _to_ bary using [[-10, 10], [-10, -10]]^-1
+                    // i.e. 1/200[[-10, -10], [10, -10]]
+                    // use scale = 20
+                    let b1 = - dx - dy;
+                    let b2 =   dx - dy;
+                    let b0 = 20 - b1 - b2;
+                    let h0 = centre_heights[i][j];
+                    let h1 = corner_heights[i][j];
+                    let h2 = corner_heights[i+1][j];
+                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
+                } else {
+                    // [[10, 10], [-10, 10]]^-1
+                    // 1/20[[1, -1], [1, 1]]
+                    let b1 = dx - dy;
+                    let b2 = dx + dy;
+                    let b0 = 20 - b1 - b2;
+                    let h0 = centre_heights[i][j];
+                    let h1 = corner_heights[i+1][j];
+                    let h2 = corner_heights[i+1][j+1];
+                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
+                }
+            } else {
+                if dy < -dx {
+                    // [[-10, -10], [10, -10]]^-1
+                    // i.e. 1/20[[-1, 1], [-1, -1]]
+                    let b1 = - dx + dy;
+                    let b2 = - dx - dy;
+                    let b0 = 20 - b1 - b2;
+                    let h0 = centre_heights[i][j];
+                    let h1 = corner_heights[i][j+1];
+                    let h2 = corner_heights[i][j];
+                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
+                } else {
+                    // [[10, -10], [10, 10]]^-1
+                    // 1/20[[1, 1], [-1, 1]]
+                    let b1 =   dx + dy;
+                    let b2 = - dx + dy;
+                    let b0 = 20 - b1 - b2;
+                    let h0 = centre_heights[i][j];
+                    let h1 = corner_heights[i+1][j+1];
+                    let h2 = corner_heights[i][j+1];
+                    z = (b0 * h0 + b1 * h1 + b2 * h2) / 20;
                 }
             }
-            */
-            let z = centre_heights[cx as usize][cy as usize];
-            player_pos = [x, y, z as i16]; // TODO heights should be signed...
+            player_pos = [x, y, z];
         }
     }
 }
