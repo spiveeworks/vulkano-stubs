@@ -103,31 +103,32 @@ fn main() {
     let mut player_pos = [0i16; 3];
     let mut player_vel = [0i16; 2];
 
-    fn draw_cube<F: FnMut(Vertex)>(pos: [i16; 3], mut f: F) {
+    fn draw_cube<F: FnMut(Vertex)>(pos: [i16; 3], size: u16, mut f: F) {
+        let radius = size as f32 / 40.0;
         let x = pos[0] as f32 / 20.0 - 8.0;
         let y = pos[1] as f32 / 20.0 - 8.0;
         let z = pos[2] as f32 / 20.0;
 
-        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.1, y+0.1, z+0.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.6, 0.6, 0.6] });
-        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y-radius, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y+radius, z+0.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y+radius, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y+radius, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y-radius, z+1.0], color: [0.6, 0.6, 0.6] });
+        f(Vertex { position: [x-radius, y-radius, z+0.0], color: [0.6, 0.6, 0.6] });
 
-        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.3, 0.3, 0.3] });
-        f(Vertex { position: [x-0.1, y-0.1, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-radius, y-radius, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+radius, y-radius, z+0.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+radius, y-radius, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x+radius, y-radius, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-radius, y-radius, z+1.0], color: [0.3, 0.3, 0.3] });
+        f(Vertex { position: [x-radius, y-radius, z+0.0], color: [0.3, 0.3, 0.3] });
 
-        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x+0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.1, y+0.1, z+1.0], color: [0.9, 0.9, 0.9] });
-        f(Vertex { position: [x-0.1, y-0.1, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-radius, y-radius, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+radius, y-radius, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+radius, y+radius, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x+radius, y+radius, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-radius, y+radius, z+1.0], color: [0.9, 0.9, 0.9] });
+        f(Vertex { position: [x-radius, y-radius, z+1.0], color: [0.9, 0.9, 0.9] });
     }
 
     let mut centre_heights = [[0i16; 16]; 16];
@@ -287,6 +288,36 @@ void main() {
     let mut previous_frame_end =
         Box::new(sync::now(device.clone())) as Box<GpuFuture>;
 
+    let mut time = 0u16;
+    let mut update_time = 1u16;
+
+    struct Entity {
+        data: Vec<u8>,
+        size: u16,
+        position: [i16; 3],
+        update: u16,
+    }
+    let mut entities = vec![
+        Entity { data: vec![1], size: 5, position: [60, 60, 0], update: 1 }
+    ];
+
+    let prog_do_update;
+    let prog_update_time;
+    let prog_size;
+    {
+        use data::*;
+        use data::Instruction::*;
+        prog_do_update = vec![ReadSlice { ident: 0, branches: vec![
+            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(1)] },
+            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(0)] },
+        ]}];
+        prog_update_time = vec![WriteConstant(20)];
+        prog_size = vec![ReadSlice { ident: 0, branches: vec![
+            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(5)] },
+            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(20)] },
+        ]}];
+    }
+
     loop {
         // cleanup unused gpu resources
         previous_frame_end.cleanup_finished();
@@ -339,8 +370,12 @@ void main() {
                     draw_tris(i, j, centre_heights[i][j], &corner_heights, &mut |v| world_vs.push(v));
                 }
                 if (player_pos[0] + 10) / 20 == i as i16 {
-                    draw_cube(player_pos, |v| world_vs.push(v));
+                    draw_cube(player_pos, 5, |v| world_vs.push(v));
                 }
+            }
+
+            for entity in &entities {
+                draw_cube(entity.position, entity.size, |v| world_vs.push(v));
             }
 
             vertex_buffer_pool
@@ -469,6 +504,24 @@ void main() {
             let z = (z / 400) as i16;
 
             player_pos = [x, y, z];
+        }
+        {
+            time += 1;
+            if update_time <= time {
+                assert!(update_time == time, "Missed an update");
+                update_time = u16::max_value();
+                for entity in &mut entities {
+                    while entity.update <= time {
+                        assert!(entity.update == time, "Missed an update");
+                        entity.data = data::execute(&prog_do_update, &entity.data);
+                        entity.update = time + data::execute_byte(&prog_update_time, &entity.data) as u16;
+                        if entity.update < update_time {
+                            update_time = entity.update;
+                        }
+                        entity.size = data::execute_byte(&prog_size, &entity.data) as u16;
+                    }
+                }
+            }
         }
     }
 }
