@@ -23,8 +23,6 @@ use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
 
-mod data;
-
 fn main() {
     let instance = {
         let extensions = vulkano_win::required_extensions();
@@ -291,32 +289,37 @@ void main() {
     let mut time = 0u16;
     let mut update_time = 1u16;
 
+    type EID = usize;
+
     struct Entity {
-        data: Vec<u8>,
-        size: u16,
+        id: EID,
+        // size: u16, // @Performance not necessary but would be good for cache
         position: [i16; 3],
         update: u16,
     }
     let mut entities = vec![
-        Entity { data: vec![1], size: 5, position: [60, 60, 0], update: 1 }
+        Entity { id: 1, position: [60, 60, 0], update: 1 }
     ];
 
-    let prog_do_update;
-    let prog_update_time;
-    let prog_size;
-    {
-        use data::*;
-        use data::Instruction::*;
-        prog_do_update = vec![ReadSlice { ident: 0, branches: vec![
-            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(1)] },
-            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(0)] },
-        ]}];
-        prog_update_time = vec![WriteConstant(20)];
-        prog_size = vec![ReadSlice { ident: 0, branches: vec![
-            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(5)] },
-            ProgramBranch { field_lens: vec![], program: vec![WriteConstant(20)] },
-        ]}];
+    #[derive(Clone, Copy)]
+    struct Data {
+        size: u16,
+        grow_to: EID,
+        grow_duration: u16,
     }
+
+    let data = vec![
+        Data {
+            size: 5,
+            grow_to: 1,
+            grow_duration: 20,
+        },
+        Data {
+            size: 20,
+            grow_to: 0,
+            grow_duration: 20,
+        },
+    ];
 
     loop {
         // cleanup unused gpu resources
@@ -375,7 +378,7 @@ void main() {
             }
 
             for entity in &entities {
-                draw_cube(entity.position, entity.size, |v| world_vs.push(v));
+                draw_cube(entity.position, data[entity.id].size, |v| world_vs.push(v));
             }
 
             vertex_buffer_pool
@@ -513,12 +516,14 @@ void main() {
                 for entity in &mut entities {
                     while entity.update <= time {
                         assert!(entity.update == time, "Missed an update");
-                        entity.data = data::execute(&prog_do_update, &entity.data);
-                        entity.update = time + data::execute_byte(&prog_update_time, &entity.data) as u16;
+                        let prev = data[entity.id];
+                        let next = data[prev.grow_to];
+                        entity.id = prev.grow_to;
+                        entity.update = time + next.grow_duration;
+
                         if entity.update < update_time {
                             update_time = entity.update;
                         }
-                        entity.size = data::execute_byte(&prog_size, &entity.data) as u16;
                     }
                 }
             }
