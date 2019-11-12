@@ -23,6 +23,48 @@ use winit::{EventsLoop, Window, WindowBuilder};
 
 use std::sync::Arc;
 
+// sqrt, newton-raphson implementation
+fn sqrt_nr(y: i32) -> i32 {
+    // x = sqrt(y)
+    // y = x^2
+    if y < 0 { panic!("Attempted to take square root of {}", y); }
+    if y < 2 { return y; }
+    // log(x) = 1/2 log(y)
+    let mut x = y >> ((32 - (y - 1).leading_zeros()) / 2);
+    for _ in 0..4 {
+        // x <- x - f(x)/f'(x)
+        // f(x) = x^2 - y, f'(x) = 2x
+        // x <- (x + y/x)/2
+        x = (x + y/x) / 2;
+    }
+    return x;
+}
+
+/*
+fn invsqrt_nr_frac(y: i32) -> u32 {
+    // x = 1/sqrt(y)
+    // y = 1/x^2
+    if y < 1 { panic!("Attempted to take inverse square root of {}", y); }
+    if y == 1 { return u32::max_value(); }
+    // log(x*2^32) = 32 - log(y) / 2 = 16 + (32 - log(y)) / 2
+    let mut x = 1u64 << 16 + (y - 1).leading_zeros() / 2;
+    for _ in 0..4 {
+        // f(x) = 1/x^2 - y
+        // f'(x) = -2/x^3
+        // x <- (3x - yx^3)/2
+        let xsqu = (x * x) >> 32;
+        let xcub = (xsqu * x) >> 32;
+        x = (3 * x - y as u64 * xcub) / 2;
+    }
+    return x as u32;
+}
+
+fn invsqrt_nr_scale(y: i32, d: i32) -> i32 {
+    let x = invsqrt_nr_frac(y) as i64 * d as i64;
+    return (x >> 32) as i32;
+}
+*/
+
 fn main() {
     let instance = {
         let extensions = vulkano_win::required_extensions();
@@ -97,9 +139,6 @@ fn main() {
     impl_vertex!(Vertex, position, color);
 
     let vertex_buffer_pool = CpuBufferPool::vertex_buffer(device.clone());
-
-    let mut player_pos = [0i16; 3];
-    let mut player_vel = [0i16; 2];
 
     fn draw_cube<F: FnMut(Vertex)>(pos: [i16; 3], size: u16, mut f: F) {
         let radius = size as f32 / 40.0;
@@ -289,32 +328,63 @@ void main() {
     let mut time = 0u16;
     let mut update_time = 1u16;
 
-    type EID = usize;
+    #[derive(Clone, Copy)]
+    enum Command {
+        Move([i16; 2]),
+    }
+    #[derive(Clone, Copy)]
+    struct Frame {
+        time: u16,
+        pos: [i16; 2],
+    }
 
-    struct Entity {
-        id: EID,
+    #[derive(Clone)]
+    struct Character {
+        pos: [i16; 3],
+        prev_pos: Frame,
+        next_pos: Option<Frame>,
+
+        current_routine: Vec<Command>,
+        routine: Vec<Command>,
+    }
+
+    let mut chars = [
+        Character {
+            pos: [0; 3],
+            prev_pos: Frame { time: 0, pos: [0; 2] },
+            next_pos: None, // this will be none precisely when current_routine is empty, so we could be using a ManuallyDrop style instead
+
+            current_routine: vec![],
+            routine: vec![
+                Command::Move([100, 100]), Command::Move([0, 0])
+            ],
+        },
+    ];
+
+    struct Item {
+        id: usize,
         // size: u16, // @Performance not necessary but would be good for cache
         position: [i16; 3],
         update: u16,
     }
     let mut entities = vec![
-        Entity { id: 1, position: [60, 60, 0], update: 1 }
+        Item { id: 1, position: [60, 60, 0], update: 1 }
     ];
 
     #[derive(Clone, Copy)]
-    struct Data {
+    struct ItemDef {
         size: u16,
-        grow_to: EID,
+        grow_to: usize,
         grow_duration: u16,
     }
 
     let data = vec![
-        Data {
+        ItemDef {
             size: 5,
             grow_to: 1,
             grow_duration: 20,
         },
-        Data {
+        ItemDef {
             size: 20,
             grow_to: 0,
             grow_duration: 20,
@@ -372,8 +442,10 @@ void main() {
                 for j in (0..16).rev() {
                     draw_tris(i, j, centre_heights[i][j], &corner_heights, &mut |v| world_vs.push(v));
                 }
-                if (player_pos[0] + 10) / 20 == i as i16 {
-                    draw_cube(player_pos, 5, |v| world_vs.push(v));
+                for it in &chars {
+                    if (it.pos[0] + 10) / 20 == i as i16 {
+                        draw_cube(it.pos, 5, |v| world_vs.push(v));
+                    }
                 }
             }
 
@@ -453,31 +525,11 @@ void main() {
                 Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => done = true,
                 Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
                 Event::DeviceEvent { event: DeviceEvent::Key (KeyboardInput { virtual_keycode: Some(key), state, .. }), .. } => {
-                    let mut new_vel = None;
                     match key {
                         VirtualKeyCode::Escape => {
                             done = true;
                         },
-                        VirtualKeyCode::W => {
-                            new_vel = Some([0, 1]);
-                        },
-                        VirtualKeyCode::A => {
-                            new_vel = Some([-1, 0]);
-                        },
-                        VirtualKeyCode::S => {
-                            new_vel = Some([0, -1]);
-                        },
-                        VirtualKeyCode::D => {
-                            new_vel = Some([1, 0]);
-                        },
                         _ => (),
-                    }
-                    if new_vel.is_some() {
-                        if state == ElementState::Pressed {
-                            player_vel = new_vel.unwrap();
-                        } else {
-                            player_vel = [0, 0];
-                        }
                     }
                 }
                 _ => ()
@@ -485,9 +537,47 @@ void main() {
         });
         if done { return; }
 
-        {
-            let x = player_pos[0] + player_vel[0];
-            let y = player_pos[1] + player_vel[1];
+        for it in &mut chars {
+            if it.next_pos.is_some() && time < it.next_pos.unwrap().time {
+                let frame = it.next_pos.unwrap();
+                let duration = frame.time - it.prev_pos.time;
+                let dt = time - it.prev_pos.time;
+                fn lerp(x1: i16, x2: i16, t2: u16, t: u16) -> i16 {
+                    (x1 * (t2 - t) as i16 + x2 * t as i16) / t2 as i16
+                }
+                it.pos[0] = lerp(it.prev_pos.pos[0], frame.pos[0], duration, dt);
+                it.pos[1] = lerp(it.prev_pos.pos[1], frame.pos[1], duration, dt);
+            } else {
+                if let Some(frame) = it.next_pos.take() {
+                    //assert!(frame.time == time, "Missed character update");
+                    it.pos[0] = frame.pos[0];
+                    it.pos[1] = frame.pos[1];
+                    it.prev_pos = frame;
+                }
+                it.current_routine.pop();
+                if it.current_routine.is_empty() {
+                    for each in &it.routine {
+                        it.current_routine.push(each.clone());
+                    }
+                }
+                if let Some(next) = it.current_routine.last() {
+                    match next {
+                        &Command::Move(pos) => {
+                            let dx = (pos[0] - it.pos[0]) as i32;
+                            let dy = (pos[1] - it.pos[1]) as i32;
+                            let dist = sqrt_nr(dx*dx + dy*dy) as u16;
+                            it.next_pos = Some(
+                                Frame { time: time + dist, pos }
+                            );
+                            it.prev_pos.time = time;
+                        },
+                    }
+                }
+            }
+        }
+        for it in &mut chars {
+            let x = it.pos[0];
+            let y = it.pos[1];
             let cx = x / 20;
             let cy = y / 20;
             let dx = (x % 20) as i32;
@@ -504,9 +594,8 @@ void main() {
             z += z10 * dx * (20 - dy);
             z += z01 * (20 - dx) * dy;
             z += z11 * dx * dy;
-            let z = (z / 400) as i16;
 
-            player_pos = [x, y, z];
+            it.pos[2] = (z / 400) as i16;
         }
         {
             time += 1;
